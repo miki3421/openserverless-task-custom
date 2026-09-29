@@ -16,7 +16,7 @@
 // under the License.
 
 import {glob} from 'glob';
-import {buildAction, buildZip, deployAction, deployPackage, deployProject} from './deploy.js';
+import {buildAction, buildZip, deployAction, deployPackage, deployProject, ensureImagesFromFiles} from './deploy.js';
 import {getOpenServerlessConfig} from './client.js';
 import {config} from "dotenv";
 import {syncDeployInfo} from "./syncDeployInfo";
@@ -123,6 +123,8 @@ export async function scan() {
         packages.add(sp[1]);
     }
 
+    // Resolve missing images before mutating any package or action.
+    await ensureImagesFromFiles([...mainsSet, ...singlesSet]);
     console.log("> Deploying:");
     for (const pkg of packages) {
         console.log(">> Package:", pkg);
