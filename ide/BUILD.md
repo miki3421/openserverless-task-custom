@@ -25,7 +25,7 @@ section of `package.json`:
 {
   "openserverless": {
     "build": {
-      "image": "${BRACCHI_EMAIL_DOCKER_IMAGE}",
+      "image": "${CUSTOM_RUNTIME_IMAGE}",
       "source": "docker.io/apache/openserverless-runtime-python:v3.12-2506091954",
       "kind": "python",
       "requirements": "requirements.txt",
@@ -47,10 +47,10 @@ the Kubernetes `registry-pull-secret`. `apiHost` can override the System API
 origin; otherwise the existing login context is used.
 
 Choose an image name compatible with the authenticated System API user. For
-the development namespace used by Bracchi:
+an example development namespace named `myapp`:
 
 ```bash
-export BRACCHI_EMAIL_DOCKER_IMAGE=openserverless-registry-svc:5000/devcargoorderentry:bracchi-email-v1
+export CUSTOM_RUNTIME_IMAGE=openserverless-registry-svc:5000/myapp:python-v1
 ops ide login
 ops ide build
 ops ide deploy
@@ -117,7 +117,7 @@ Pods reference that Secret. A local NodePort endpoint is suitable only on nodes
 that expose the registry; use a reachable registry address for other clusters.
 
 The legacy Docker + kind deployment can continue building with `build.sh` and
-using `127.0.0.1:32000/bracchi-email:latest`. When that image already exists,
+using an existing image such as `127.0.0.1:32000/custom-runtime:latest`. When that image already exists,
 deploy does not call the System API and does not rename it. If it is missing,
 the old image name is not a valid new System API target; rebuild it with the
 existing Docker workflow or select a namespace-based image name explicitly.
@@ -132,7 +132,7 @@ require a separately prepared base runtime.
 After the branch is published:
 
 ```bash
-export OPS_REPO=https://github.com/miki3421/openserverless-task-bracchi
+export OPS_REPO=https://github.com/miki3421/openserverless-task-custom
 export OPS_BRANCH=codex/ide-build
 export KUBECONFIG="$HOME/.ops/tmp/kubeconfig"
 ops -update
