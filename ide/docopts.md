@@ -26,6 +26,7 @@ OpenServerless Ide Development Utilities.
 Usage:
     ide login [<username>] [<apihost>] [--pin] [--mode=<mode>]
     ide deploy [<action>|--packages|--web] [--dry-run] [--mode=<mode>]
+    ide build [<image>] [--force] [--dry-run] [--mode=<mode>]
     ide devel [--fast] [--dry-run]
     ide undeploy [<action>] [--dry-run]
     ide clean
@@ -46,6 +47,7 @@ Usage:
     ide login               login in openserverless
     ide devel               activate development mode
     ide deploy              deploy everything or just one action
+    ide build               build missing custom runtime images through the System API
     ide undeploy            undeploy actions and packages from the current project or just one action
     ide clean               clean the temporay files
     ide setup               setup the ide
@@ -63,6 +65,7 @@ Usage:
 
 ```
 --dry-run       Simulates the execution without making any actual changes
+--force         Rebuild an image even when its manifest already exists (ide build only)
 --packages      Only deploy packages, skip web upload
 --web           Only deploy web folder, skip packages
 --fast          Skip the initial deployment step and go in incremental update mode

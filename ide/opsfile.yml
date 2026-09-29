@@ -247,6 +247,22 @@ tasks:
         echo "Serving assets from ${OPS_UPLOAD_FOLDER:-web}"
         bun {{.TASKFILE_DIR}}/deploy/serve.js -h 127.0.0.1 -P $OPSDEV_HOST -d "$OPS_PWD/${OPS_UPLOAD_FOLDER:-web}"
 
+  build:
+    silent: true
+    desc: build custom runtime images through the System API without Docker
+    dotenv:
+      - "{{.OPS_PWD}}/.env.{{.__mode}}"
+      - "{{.OPS_PWD}}/packages/.env"
+      - "{{.OPS_PWD}}/.env"
+    env:
+      OPS_BUILD_SELECTED_IMAGE: "{{._image_}}"
+    cmds:
+      - |
+        BUILD_ARGS=()
+        if {{.__force}}; then BUILD_ARGS+=(--force); fi
+        if {{.__dry_run}}; then BUILD_ARGS+=(--dry-run); fi
+        bun {{.TASKFILE_DIR}}/image-build.ts "${BUILD_ARGS[@]}"
+
   deploy:
     silent: true
     interactive: true
@@ -393,5 +409,3 @@ tasks:
 
   nodejs:
     desc: nodejs subcommand
-
-

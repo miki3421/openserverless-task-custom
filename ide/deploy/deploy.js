@@ -17,6 +17,7 @@
 
 import fs from "fs/promises";
 import { expandEnv } from "./env_utils";
+import { ensureImage } from "../image-build.ts";
 const { parse } = await import("shell-quote");
 
 const MAINS = ["__main__.py", "index.js", "index.php", "main.go"];
@@ -32,6 +33,7 @@ export function setDryRun(b) {
 
 async function exec(cmd) {
   console.log("$", cmd);
+  if (dryRun) return;
   cmd = expandEnv(cmd);
   const cmdArgs = parse(cmd).filter((arg) => typeof arg === "string");
 
@@ -66,6 +68,18 @@ async function extractArgs(files) {
     }
   }
   return res;
+}
+
+/** Check all Docker directives using the same environment expansion as action deploy. */
+export async function ensureImagesFromFiles(files) {
+  const args = (await extractArgs(files)).join(" ");
+  const expanded = parse(expandEnv(args)).filter(arg => typeof arg === "string");
+  const images = expanded.flatMap((arg, i) => arg === "--docker"
+    ? [expanded[i + 1]] : arg.startsWith("--docker=") ? [arg.slice(9)] : []);
+  for (const image of new Set(images)) {
+    if (!image || image.startsWith("--")) throw new Error("Missing --docker image in action directives");
+    await ensureImage(image, { dryRun, fromDeploy: true });
+  }
 }
 
 const packageDone = new Set();
@@ -116,10 +130,9 @@ export async function deployAction(artifact) {
   } catch(error) {
 
     console.log("❌ cannot deploy", artifact, "Error:", error.message);
-    return;
+    activeDeployments.delete(artifact);
+    throw error;
   }
-
-  await deployPackage(pkg);
 
   let toInspect;
   if (typ === "zip") {
@@ -129,13 +142,17 @@ export async function deployAction(artifact) {
     toInspect = [artifact];
   }
 
-  const args = (await extractArgs(toInspect)).join(" ");
   const actionName = `${pkg}/${name}`;
 
   try {
+    const args = (await extractArgs(toInspect)).join(" ");
+    await ensureImagesFromFiles(toInspect);
+    await deployPackage(pkg);
     await exec(`ops action update ${actionName} ${artifact} ${args}`);
   } catch(error) {
     console.log("❌ cannot deploy", artifact, "Error:", error.message);
+    activeDeployments.delete(artifact);
+    throw error;
   }
 
   activeDeployments.delete(artifact);
