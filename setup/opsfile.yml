@@ -159,10 +159,7 @@ tasks:
       elif  {{.__uninstall}}
       then  {{.RUN}} ops setup kubernetes delete CONTEXT="{{._context_}}"
       else
-            if test "$OPERATOR_COMPONENT_SEAWEEDFS" != "true" || test "$OPERATOR_COMPONENT_STATIC" != "true"
-            then die "Cluster setup requires SeaweedFS and static hosting for the frontend. Enable them with: ops config enable --seaweedfs --static"
-                 exit 1
-            fi
+            bun "$OPS_ROOT/config/components.ts" validate
             {{.RUN}} ops setup kubernetes create CONTEXT="{{._context_}}"
             {{.RUN}} ops setup openserverless streamer deploy
             {{.RUN}} ops setup openserverless system-api deploy
