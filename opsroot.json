@@ -13,11 +13,11 @@
     },
     "images": {
       "operator": "docker.io/miki3421/ops-advanced-operator:postgres18-dev",
-      "controller": "docker.io/apache/openserverless-wsk-controller:0.9.0-incubating.26i07r51-snapshot",
-      "invoker": "docker.io/apache/openserverless-wsk-invoker:0.9.0-incubating.26i07r51-snapshot",
-      "streamer": "docker.io/apache/openserverless-streamer:0.9.0-incubating.26i09l58-snapshot",
-      "systemapi": "docker.io/apache/openserverless-admin-api:0.9.0-incubating.26i11g48-snapshot",
-      "devcontainer": "docker.io/apache/openserverless-devcontainer:0.9.0-incubating.26i07w26-snapshot",
+      "controller": "docker.io/apache/openserverless-wsk-controller:0.9.0-incubating.26i21w32-snapshot",
+      "invoker": "docker.io/apache/openserverless-wsk-invoker:0.9.0-incubating.26i21w32-snapshot",
+      "streamer": "docker.io/apache/openserverless-streamer:0.9.0-incubating.26i21w32-snapshot",
+      "systemapi": "docker.io/apache/openserverless-admin-api:0.9.0-incubating.26i21w32-snapshot",
+      "devcontainer": "docker.io/apache/openserverless-devcontainer:0.9.0-incubating.26i21w32-snapshot",
       "ingress": "registry.k8s.io/ingress-nginx/controller:v1.7.0",
       "couchdb": "docker.io/apache/couchdb:2.3",
       "etcd": "docker.io/bitnamilegacy/etcd:3.5.17-debian-12-r0",
@@ -28,10 +28,11 @@
       "milvus": "docker.io/milvusdb/milvus:v2.5.2",
       "nginx": "docker.io/nginxinc/nginx-unprivileged:1.24",
       "pgvector": "docker.io/pgvector/pgvector:0.8.6-pg18-bookworm@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
-      "pgdumper": "docker.io/miki3421/ops-advanced-pg-dumper:18.6-pgvector0.8.6-dev",
       "kubegres": "docker.io/reactivetechio/kubegres:1.18",
       "ferretdb": "ghcr.io/nuvolaris/ferretdb:1.6.0",
-      "rbacproxy": "registry.k8s.io/kubebuilder/kube-rbac-proxy:v0.14.1"
+      "rbacproxy": "registry.k8s.io/kubebuilder/kube-rbac-proxy:v0.14.1",
+      "tika": "docker.io/apache/tika:3.2.3.0-full",
+      "pgdumper": "docker.io/miki3421/ops-advanced-pg-dumper:18.6-pgvector0.8.6-dev"
     }
   }
 }
