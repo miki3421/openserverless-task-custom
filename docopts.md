@@ -25,7 +25,7 @@ Type `ops <task>` to see usage and subtasks.
 ```text
   admin       Manage additional users in OpenServerless
   config      Manage the Apache OpenServerless configuration
-  backup      Inspect OpenServerless cluster backup coverage
+  backup      Manage single-node K3s cluster backup and restore
   setup       Setup the Apache OpenServerless platform on multiple environments
   debug       Debug utilities for the Apache OpenServerless platform
   cloud       OpenServerless setup utilities for supported Deployment models on Cloud Providers

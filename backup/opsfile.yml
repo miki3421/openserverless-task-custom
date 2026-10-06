@@ -19,4 +19,4 @@ version: "3"
 
 tasks:
   cluster:
-    desc: inspect cluster backup coverage
+    desc: manage single-node K3s cluster backup and restore

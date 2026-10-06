@@ -16,7 +16,7 @@
 // under the License.
 
 import { describe, expect, test } from "bun:test";
-import { buildPlan } from "./cluster.ts";
+import { buildPlan, isInside, isValidRunId, managerFirst } from "./cluster.ts";
 
 describe("cluster backup preflight", () => {
   test("reports local-path hostPath data as an uncovered blocker", () => {
@@ -53,5 +53,44 @@ describe("cluster backup preflight", () => {
     expect(plan.velero.ready).toBe(true);
     expect(plan.velero.locations).toEqual(["velero/primary:Available"]);
     expect(plan.blockers.some((blocker) => blocker.includes("BackupStorageLocation"))).toBe(false);
+  });
+
+  test("recognizes supported native single-node K3s coverage without Velero", () => {
+    const plan = buildPlan({
+      context: "default",
+      nodes: [{}],
+      pvs: [{ spec: { local: { path: "/var/lib/rancher/k3s/storage/pvc" } }, status: { phase: "Bound" } }],
+      nativeK3sReady: true,
+    });
+
+    expect(plan.nativeK3sReady).toBe(true);
+    expect(plan.blockers).toEqual([]);
+    expect(plan.warnings.some((warning) => warning.includes("off-host"))).toBe(true);
+  });
+
+  test("detects data paths contained by the K3s data directory", () => {
+    expect(isInside("/var/lib/rancher/k3s/storage/pvc-a", "/var/lib/rancher/k3s")).toBe(true);
+    expect(isInside("/home/ubuntu/cluster-backups", "/var/lib/rancher/k3s")).toBe(false);
+    expect(isInside("/var/lib/rancher/k3s-elsewhere/pvc", "/var/lib/rancher/k3s")).toBe(false);
+  });
+
+  test("accepts only safe synthetic run ids", () => {
+    expect(isValidRunId("lab-20261006")).toBe(true);
+    expect(isValidRunId("../cluster-delete")).toBe(false);
+    expect(isValidRunId("UPPERCASE")).toBe(false);
+    expect(isValidRunId("a".repeat(45))).toBe(false);
+  });
+
+  test("stops workload operators before their managed workloads and starts them last", () => {
+    const workloads = [
+      { kind: "statefulset", namespace: "openserverless", name: "openserverless-postgres-1", replicas: 1 },
+      { kind: "statefulset", namespace: "openserverless", name: "openserverless-operator", replicas: 1 },
+      { kind: "deployment", namespace: "openserverless", name: "kubegres-controller-manager", replicas: 1 },
+    ];
+    const sorted = managerFirst(workloads);
+
+    expect(sorted[0]?.name).toBe("openserverless-operator");
+    expect(sorted[1]?.name).toBe("kubegres-controller-manager");
+    expect(sorted.at(-1)?.name).toBe("openserverless-postgres-1");
   });
 });

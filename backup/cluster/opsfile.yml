@@ -18,8 +18,60 @@
 version: "3"
 
 tasks:
+  seed:
+    desc: add reversible synthetic backup markers to every local-path volume
+    silent: true
+    env:
+      OPS_BACKUP_RUN_ID: '{{._run_id_}}'
+      OPS_BACKUP_DESTINATION: '{{._destination_}}'
+    cmds:
+      - bun cluster.ts seed
+
+  verify-data:
+    desc: verify synthetic Kubernetes and persistent-volume markers
+    silent: true
+    env:
+      OPS_BACKUP_RUN_ID: '{{._run_id_}}'
+      OPS_BACKUP_DESTINATION: '{{._destination_}}'
+    cmds:
+      - bun cluster.ts verify-data
+
   plan:
     desc: inspect cluster backup coverage and report gaps
     silent: true
     cmds:
       - bun cluster.ts plan {{.__json}}
+
+  create:
+    desc: create an offline single-node K3s backup outside the cluster data directory
+    silent: true
+    env:
+      OPS_BACKUP_DESTINATION: '{{._destination_}}'
+    cmds:
+      - bun cluster.ts create
+
+  verify:
+    desc: verify a K3s backup archive and its checksum
+    silent: true
+    env:
+      OPS_BACKUP_PATH: '{{._backup_}}'
+    cmds:
+      - bun cluster.ts verify
+
+  delete:
+    desc: delete the local K3s cluster after verifying its backup
+    silent: true
+    env:
+      OPS_BACKUP_PATH: '{{._backup_}}'
+      OPS_BACKUP_CONFIRM_DELETE: '{{.__confirm_cluster_delete}}'
+    cmds:
+      - bun cluster.ts delete
+
+  restore:
+    desc: restore the local K3s cluster from a verified offline backup
+    silent: true
+    env:
+      OPS_BACKUP_PATH: '{{._backup_}}'
+      OPS_BACKUP_CONFIRM_RESTORE: '{{.__confirm_cluster_restore}}'
+    cmds:
+      - bun cluster.ts restore
