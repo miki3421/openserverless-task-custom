@@ -56,6 +56,12 @@ Usage:
 
 ## Subtasks
 
+`setup cluster --uninstall` finalizes WhiskUsers and Whisks while their operator
+is still running, then removes the namespace. Missing resources are tolerated;
+API errors and finalizer timeouts stop the operation without stripping finalizers.
+An operator deployed inside the target namespace must be available for this
+sequence; direct namespace deletion can remove it before cleanup completes.
+
 - `kubernetes`: prepare kubernetes
 - `openserverless`: install openserverless
 - `docker`: prepare docker

@@ -393,20 +393,10 @@ tasks:
 
   delete:
     silent: true
-    ignore_error: true
     desc: delete cluster
     cmds:
-      - source forcedelete.src
-      - kubectl delete clusterissuers/letsencrypt-issuer 2>/dev/null
-      - kubectl -n openserverless delete sts/openserverless-operator --grace-period=0
-      - kubectl -n openserverless delete po,sts,job,deploy,svc --all --grace-period=0
-      - kubectl -n openserverless delete cm,secret,sa,role --all
-      - kubectl -n openserverless delete pvc --all
-      - kubectl -n openserverless delete ing --all --grace-period=0 2>/dev/null
-      - kubectl -n openserverless delete route --all --grace-period=0 2>/dev/null
-      - kubectl -n openserverless delete kubegres --all
-      #- "kubectl get ns openserverless -o json | jq '.spec.finalizers = []' | kubectl replace --raw '/api/v1/namespaces/openserverless/finalize' -f -"
-      - kubectl delete ns openserverless
+      - task: context
+      - bun "$OPS_ROOT/setup/kubernetes/uninstall.ts"
 
   superdelete:
     - source superdelete.src
