@@ -46,7 +46,14 @@ $T      secretName: streamer-api-tls
             name: openserverless-streamer-api
             port:
               number: 8080
-        path: /
+        path: /web
+        pathType: Prefix
+      - backend:
+          service:
+            name: openserverless-streamer-api
+            port:
+              number: 8080
+        path: /action
         pathType: Prefix
 
 ---
