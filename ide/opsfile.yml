@@ -285,7 +285,7 @@ tasks:
         else
             if [ -n "$deploy_packages" ]
             then
-                bun {{.TASKFILE_DIR}}/deploy/index.js "$OPS_PWD" -d $DRY
+                bun {{.TASKFILE_DIR}}/deploy/index.js "$OPS_PWD" -d $DRY || exit $?
             fi
             if [ -n "$deploy_web" ]
             then
