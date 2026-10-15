@@ -20,7 +20,7 @@
 const { MongoClient } = require('mongodb');
 
 async function main(args) {
-    console.log(args.mongodb_url)
+    // Connection strings contain credentials.
     const client = new MongoClient(args.mongodb_url);
     await client.connect()
     console.log("client.connect() passed")

@@ -421,13 +421,8 @@ tasks:
         msg: "Current OpenServerless operator it is already updated to newest version. Request ignored."
 
   instance-update:
-    #desc: deploy instance
+    desc: render and apply the current instance configuration
     silent: true
     cmds:
-      - ops setup kubernetes prepare
-      - ops setup kubernetes whiskcrd
-      - |
-        kubectl apply -f _whisk.yaml
-      - task: wait
-        vars:
-          OBJECT: pod/controller-0
+      - task: prepare
+      - task: instance

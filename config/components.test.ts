@@ -31,7 +31,7 @@ test("full includes services but not notifications or scheduling",()=>{
 });
 test("enable adds transitive dependencies",()=>{
  expect(plan("enable",["milvus"],{})).toEqual({[keys.milvus]:"true",[keys.etcd]:"true",[keys.seaweedfs]:"true"});
- expect(plan("enable",["mongodb"],{})[keys.postgres]).toBe("true");
+ expect(plan("enable",["mongodb"],{})).toEqual({[keys.mongodb]:"true"});
  expect(plan("enable",["static"],{})[keys.seaweedfs]).toBe("true");
 });
 test("disable cascades and preserves unrelated prerequisites",()=>{
@@ -40,7 +40,7 @@ test("disable cascades and preserves unrelated prerequisites",()=>{
  expect(plan("disable",["milvus"],{})[keys.etcd]).toBeUndefined();
  expect(plan("disable",["etcd"],{})[keys.milvus]).toBe("false");
  expect(plan("disable",["seaweedfs"],{})[keys.static]).toBe("false");
- expect(plan("disable",["postgres"],{})[keys.mongodb]).toBe("false");
+ expect(plan("disable",["postgres"],{})[keys.mongodb]).toBeUndefined();
 });
 test("notifications require configuration before any changes",()=>{
  expect(()=>plan("enable",["all","mail"],{})).toThrow("Configure notifications");

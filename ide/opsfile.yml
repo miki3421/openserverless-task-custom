@@ -221,6 +221,8 @@ tasks:
           config VITE_OPSDEV_S3="$OPSDEV_S3"
           config VITE_OPSDEV_HOST="$OPSDEV_HOST"
           config VITE_OPSDEV_APIHOST="$OPSDEV_APIHOST"
+        else
+          exit $?
         fi
         if {{.__pin}}
         then
