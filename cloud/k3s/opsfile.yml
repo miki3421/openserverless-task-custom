@@ -39,6 +39,7 @@ tasks:
       INSTALL_USER: '{{._user_ | default "root"}}'
     cmds:
       - test -n "{{._server_}}" || die "required <server> ip or hostname"
+      - bun "$OPS_ROOT/cloud/k3s/registry.ts" configure "{{._server_}}" "{{.INSTALL_USER}}"
       - |
         traefik_http_nodeport="${K3S_TRAEFIK_HTTP_NODEPORT:-${TRAEFIK_HTTP_NODEPORT:-30080}}"
         traefik_https_nodeport="${K3S_TRAEFIK_HTTPS_NODEPORT:-${TRAEFIK_HTTPS_NODEPORT:-30081}}"
@@ -61,6 +62,15 @@ tasks:
         k3sup install --k3s-version="{{.K3S_VERSION}}"
         --host="{{._server_}}" --user="{{.INSTALL_USER}}"
         --local-path=$OPS_TMP/kubeconfig
+
+  registry:
+    silent: true
+    desc: configure the scoped OPS registry mirror on a K3s server
+    vars:
+      INSTALL_USER: '{{._user_ | default "root"}}'
+    cmds:
+      - test -n "{{._server_}}" || die "required <server> ip or hostname"
+      - bun "$OPS_ROOT/cloud/k3s/registry.ts" configure "{{._server_}}" "{{.INSTALL_USER}}"
 
   create:
     silent: true
