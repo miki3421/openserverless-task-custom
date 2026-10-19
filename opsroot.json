@@ -16,7 +16,7 @@
       "controller": "docker.io/apache/openserverless-wsk-controller:0.9.0-incubating.26i21w32-snapshot",
       "invoker": "docker.io/apache/openserverless-wsk-invoker:0.9.0-incubating.26i21w32-snapshot",
       "streamer": "docker.io/apache/openserverless-streamer:0.9.0-incubating.26i21w32-snapshot",
-      "systemapi": "docker.io/apache/openserverless-admin-api:0.9.0-incubating.26i21w32-snapshot",
+      "systemapi": "ghcr.io/miki3421/openserverless-admin-api@sha256:cb8af61e8ab240907879556e04fae9350193966406ab1352ed0efc4174f013df",
       "devcontainer": "docker.io/apache/openserverless-devcontainer:0.9.0-incubating.26i21w32-snapshot",
       "ingress": "registry.k8s.io/ingress-nginx/controller:v1.7.0",
       "couchdb": "docker.io/apache/couchdb:3.5.2@sha256:c703989c0a370a1a6b179785bcb5b2b5501347bb0219d02d597d0a9107eb8d28",
