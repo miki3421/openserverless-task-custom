@@ -262,11 +262,18 @@ tasks:
         else echo Reusing current secrets.
         fi
 
+  images:
+    desc: show the effective platform image catalog without accessing Kubernetes
+    silent: true
+    cmds:
+      - bun images.ts catalog
+
   instance:
     desc: deploy operator instance
     silent: true
     cmds:
       - envsubst -i whisk.yaml -o _whisk.yaml
+      - bun images.ts render _whisk.yaml _whisk.yaml
       #- cat _whisk.yaml
       - kubectl apply -f _whisk.yaml
       - task: wait-openwhisk
@@ -428,6 +435,7 @@ tasks:
     cmds:
       - ops setup kubernetes prepare
       - ops setup kubernetes whiskcrd
+      - bun images.ts render _whisk.yaml _whisk.yaml
       - |
         kubectl apply -f _whisk.yaml
       - task: wait

@@ -43,6 +43,13 @@ spec:
               type: object
               x-kubernetes-preserve-unknown-fields: true
               properties:              
+                images:
+                  description: Effective platform image catalog supplied by OPS tasks. Omit to retain legacy manifest defaults. Does not migrate database formats.
+                  type: object
+                  minProperties: 1
+                  additionalProperties:
+                    type: string
+                    minLength: 1
                 openserverless:
                   description: Used to specify the openwishk apihost. It can be omitted on kubernetes having ingress attached to external LB (AKS, EKS, LKS etc)
                   type: object
@@ -928,4 +935,4 @@ spec:
           type: string
           priority: 0
           jsonPath: .status.whisk_create.seaweedfs
-          description: Seaweedfs                                                                                                                        
+          description: Seaweedfs

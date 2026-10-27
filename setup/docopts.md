@@ -57,5 +57,7 @@ Usage:
 ## Subtasks
 
 - `kubernetes`: prepare kubernetes
+  (`ops setup kubernetes images` prints the effective image catalog without
+  accessing the cluster; see `IMAGE_CATALOG.md`).
 - `openserverless`: install openserverless
 - `docker`: prepare docker
