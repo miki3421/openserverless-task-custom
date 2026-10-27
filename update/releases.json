@@ -1,0 +1,6 @@
+{
+  "license": "Apache-2.0",
+  "schemaVersion": 1,
+  "description": "Only publish complete, reviewed release manifests here. No platform release has been enrolled in this index yet.",
+  "releases": []
+}

@@ -26,6 +26,7 @@ Type `ops <task>` to see usage and subtasks.
   admin       Manage additional users in OpenServerless
   config      Manage the Apache OpenServerless configuration
   setup       Setup the Apache OpenServerless platform on multiple environments
+  update      Inspect available releases and plan an update without applying changes
   debug       Debug utilities for the Apache OpenServerless platform
   cloud       OpenServerless setup utilities for supported Deployment models on Cloud Providers
   util        Utilities

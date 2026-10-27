@@ -27,12 +27,23 @@ vars:
 env:
   KUBECONFIG:
     sh: |
-      if test -e $OPS_TMP/kubeconfig
-      then echo  $OPS_TMP/kubeconfig
+      if test -n "$KUBECONFIG"
+      then printf '%s\n' "$KUBECONFIG"
+      elif test -e "$OPS_TMP/kubeconfig"
+      then printf '%s\n' "$OPS_TMP/kubeconfig"
       else echo ~/.kube/config
       fi
 
 tasks:
+
+  default:
+    desc: inspect a release or plan an update without changing the cluster
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"check":{{toJson (default false .__check)}},"plan":{{toJson (default false .__plan)}},"json":{{toJson (default false .__json)}},"manifest":{{toJson (default "" .__manifest)}},"index":{{toJson (default "" .__index)}},"to":{{toJson (default "" .__to)}},"channel":{{toJson (default "stable" .__channel)}},"context":{{toJson (default "" .__context)}},"namespace":{{toJson (default "openserverless" .__namespace)}},"instance":{{toJson (default "controller" .__instance)}}}
+    cmds:
+      - bun plan.ts
 
   cli:
     desc: update the cli
