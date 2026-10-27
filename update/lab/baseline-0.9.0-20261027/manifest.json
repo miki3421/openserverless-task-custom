@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "id": "baseline-0.9.0-lab.20261027",
+  "version": "0.9.0-lab.20261027",
+  "distribution": "apache",
+  "channel": "preview",
+  "status": "local",
+  "publishedAt": "2026-10-27T20:42:19Z",
+  "cli": {
+    "version": "0.9.0-incubating+26i11g51-snapshot",
+    "sha256": "f59a93822eabe7b69322bfe528943c5578ecaef3bd6f1d38be652654436048f4",
+    "platform": "linux_amd64"
+  },
+  "tasks": {
+    "repository": "https://github.com/miki3421/openserverless-task-custom.git",
+    "commit": "14a6eca5a40d274dfe43b84b0a2f1e9d66cb7e36"
+  },
+  "images": {
+    "alertmanager": "quay.io/prometheus/alertmanager:v0.25.0",
+    "busybox": "busybox:1.36.0",
+    "busybox_kafka": "busybox:1.36.1",
+    "cert_manager": "quay.io/jetstack/cert-manager-controller:v1.10.1",
+    "cert_manager_cainjector": "quay.io/jetstack/cert-manager-cainjector:v1.10.1",
+    "cert_manager_webhook": "quay.io/jetstack/cert-manager-webhook:v1.10.1",
+    "controller": "docker.io/apache/openserverless-wsk-controller:5d509e3",
+    "couchdb": "apache/couchdb:2.3",
+    "couchdb_openshift": "ghcr.io/nuvolaris/couchdb:2.3.1-nuvolaris.23101915",
+    "devcontainer": "docker.io/apache/openserverless-devcontainer:0.9.0-incubating.26i21w32-snapshot",
+    "etcd": "docker.io/bitnamilegacy/etcd:3.5.17-debian-12-r0",
+    "ferretdb": "ghcr.io/nuvolaris/ferretdb:1.6.0",
+    "ingress": "registry.k8s.io/ingress-nginx/controller:v1.8.1@sha256:e5c4824e7375fcf2a393e1c03c293b69759af37a9ca6abdb91b13d78a93da8bd",
+    "ingress_admission": "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20230407@sha256:543c40fd093964bc9ab509d3e791f9989963021f1e9e4c9c7b6700b02bfb227b",
+    "ingress_admission_kind": "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20220916-gd32f8c343@sha256:39c5b2e3310dc4264d638ad28d9d1d96c4cbb2b2dcfb52368fe4e3c63f61e10f",
+    "ingress_kind": "registry.k8s.io/ingress-nginx/controller:v1.5.1@sha256:4ba73c697770664c1e00e9f968de14e08f606ff961c76e5d7033a4a9c593c629",
+    "invoker": "docker.io/apache/openserverless-wsk-invoker:0.9.0-incubating.26i21w32-snapshot",
+    "kafka": "ghcr.io/nuvolaris/kafka:2.3.1.2311011621",
+    "kube_state_metrics": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.8.0",
+    "kubegres": "reactivetechio/kubegres:1.18",
+    "kvrocks": "docker.io/apache/kvrocks:2.8.0",
+    "milvus": "milvusdb/milvus:v2.5.27",
+    "milvus_operator": "docker.io/milvusdb/milvus-operator:v1.1.3",
+    "nginx": "nginxinc/nginx-unprivileged:1.24",
+    "operator": "localhost/ops-operator-image-catalog:20261027-local2",
+    "pgdumper": "ghcr.io/nuvolaris/pg-dumper:16.3.2405222002",
+    "pgvector": "pgvector/pgvector:pg16",
+    "prometheus": "quay.io/prometheus/prometheus:v2.43.1",
+    "prometheus_reloader": "quay.io/prometheus-operator/prometheus-config-reloader:v0.65.1",
+    "pulsar": "apachepulsar/pulsar:3.0.7",
+    "rbacproxy": "registry.k8s.io/kubebuilder/kube-rbac-proxy:v0.14.1",
+    "redis": "docker.io/bitnamilegacy/redis:8.2.1",
+    "registry": "registry:3.0.0",
+    "seaweedfs": "chrislusf/seaweedfs:3.97",
+    "streamer": "localhost/ops-streamer-availability:20261020-local2",
+    "systemapi": "localhost/ops-admin-api-integrated:20261026-local",
+    "tika": "docker.io/apache/tika:3.2.3.0-full",
+    "volume_exporter": "ghcr.io/nuvolaris/volume_exporter:1.0.0.2311032017",
+    "zookeeper": "ghcr.io/nuvolaris/zookeeper:3.4.14"
+  },
+  "runtimes": {
+    "sha256": "71bc02c825713fd6819ee3f621ccb4b1b9d45fd73dac5a86ae770b929b54e2f3"
+  },
+  "kubernetes": {
+    "minVersion": "1.36.4",
+    "maxVersionExclusive": "1.36.5"
+  }
+}
