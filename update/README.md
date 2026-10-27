@@ -117,6 +117,28 @@ against the index location. HTTPS downloads use bounded GETs and reject
 redirects and credential-bearing URLs. A user-provided index is an explicit
 trust source; checksums provide consistency, not publisher authentication.
 
+### Laboratory catalog
+
+A separate **local** index can declare `"scope": "lab"`. Its entries must all be
+`channel: preview`, `status: local` and include a `runtimes` path relative to the
+index. The planner verifies both the manifest's byte checksum and that runtime
+file's canonical checksum. Select it explicitly with
+`--channel=preview --index=/path/to/lab/index.json`; `--to` can pin one entry.
+Local entries never enter the normal published-release selection. HTTPS lab
+indexes, remote lab manifests and remote lab runtime files are rejected.
+
+Lab targets describe an existing installation and may depend on unpublished
+images or an already installed CLI. They do not certify fresh installation,
+registry availability, or a distributable Apache release. Artifact publication
+is a separate step before automatic updates can be implemented.
+
+Keep release metadata separate from the task revision it describes: first
+commit the task implementation, then reference that existing commit from a
+later catalog commit. A checkout containing newer catalog metadata will correctly
+report a task revision difference; use the pinned task checkout with the catalog
+passed through `--index` to verify an aligned installation. Do not hide this
+difference or use a moving branch as the task pin.
+
 ## Blockers and boundaries
 
 Persistent service changes (including PostgreSQL, CouchDB, FerretDB, Redis,

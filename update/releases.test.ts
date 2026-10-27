@@ -141,3 +141,46 @@ test("empty index reports unavailable; invalid and oversized local documents fai
   await expect(readDocument(index)).rejects.toThrow();
   await expect(readDocument("http://example.org/index.json")).rejects.toThrow("HTTPS");
 }));
+
+test("local lab index selects a pinned preview target and verifies its runtime artifact", async () => temp(async dir => {
+  const runtime = { runtimes: { python: [{ kind: "python:default" }] } };
+  const doc = JSON.stringify(release({ status: "local", runtimes: { sha256: hash(canonical(runtime)) } }));
+  writeFileSync(join(dir, "manifest.json"), doc);
+  writeFileSync(join(dir, "runtimes.json"), JSON.stringify(runtime));
+  const index = join(dir, "index.json");
+  const entry = { id: "release-0.9.1", version: "0.9.1", channel: "preview", status: "local",
+    publishedAt: "2026-10-27T00:00:00Z", manifest: "manifest.json", sha256: hash(doc), runtimes: "runtimes.json" };
+  const writeIndex = (entries = [entry], scope: any = "lab") =>
+    writeFileSync(index, JSON.stringify({ schemaVersion: 1, ...(scope ? { scope } : {}), releases: entries }));
+  writeIndex();
+  const options = { root: dir, index, channel: "preview" as const };
+  expect((await selectTarget(options)).selection).toBe("lab_index");
+  expect((await selectTarget({ ...options, to: entry.id })).release?.id).toBe(entry.id);
+  expect((await selectTarget({ ...options, channel: "stable" })).release).toBeNull();
+  expect((await selectTarget({ ...options, to: "missing" })).release).toBeNull();
+  writeIndex([{ ...entry, withdrawn: true }]);
+  expect((await selectTarget(options)).release).toBeNull();
+  // Omitted/unknown scope cannot promote a local target into published selection.
+  writeIndex([entry], null);
+  expect((await selectTarget(options)).release).toBeNull();
+  writeIndex([{ ...entry, runtimes: "https://example.org/runtimes.json" }]);
+  await expect(selectTarget(options)).rejects.toThrow("local files");
+  writeIndex();
+  writeFileSync(join(dir, "runtimes.json"), '{"runtimes":{}}');
+  await expect(selectTarget(options)).rejects.toThrow("runtime artifact checksum");
+}));
+
+test("lab catalog rejects publication, remote artifacts and mixed channels", async () => temp(async dir => {
+  const index = join(dir, "index.json");
+  const entry = { id: "release-0.9.1", version: "0.9.1", channel: "preview", status: "local",
+    publishedAt: "2026-10-27T00:00:00Z", manifest: "https://example.org/local.json", sha256: hex };
+  for (const change of [{ channel: "stable" }, { status: "published" }, {}]) {
+    writeFileSync(index, JSON.stringify({ schemaVersion: 1, scope: "lab", releases: [{ ...entry, ...change }] }));
+    await expect(selectTarget({ root: dir, index, channel: "preview" })).rejects.toThrow();
+  }
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () => new Response(JSON.stringify({ schemaVersion: 1, scope: "lab", releases: [] }))) as typeof fetch;
+    await expect(selectTarget({ root: dir, index: "https://example.org/lab.json", channel: "preview" })).rejects.toThrow("local files");
+  } finally { globalThis.fetch = original; }
+}));

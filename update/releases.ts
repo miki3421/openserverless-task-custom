@@ -168,8 +168,13 @@ export async function selectTarget(options: TargetOptions): Promise<{
   const indexSource = options.index || resolve(options.root, "update/releases.json");
   const index = (await readDocument(indexSource)).value;
   if (index?.schemaVersion !== 1 || !Array.isArray(index.releases)) throw new Error("Invalid release index");
+  const lab = index.scope === "lab";
+  if (index.scope !== undefined && !lab) throw new Error("Unsupported release index scope");
+  if (lab && (/^[a-z]+:\/\//i.test(indexSource) || index.releases.some((entry: any) =>
+      entry.channel !== "preview" || entry.status !== "local")))
+    throw new Error("Lab indexes must be local files containing only local preview targets");
   const candidates = index.releases.filter((entry: any) =>
-    entry.channel === options.channel && entry.status === "published" && !entry.withdrawn &&
+    entry.channel === options.channel && (lab ? entry.status === "local" : entry.status === "published") && !entry.withdrawn &&
     (!options.to || options.to === "latest" || entry.id === options.to));
   for (const entry of candidates) {
     if (!ID.test(entry.id || "") || !VERSION.test(entry.version || "") ||
@@ -180,16 +185,27 @@ export async function selectTarget(options: TargetOptions): Promise<{
     Date.parse(b.publishedAt) - Date.parse(a.publishedAt) || b.id.localeCompare(a.id));
   const selected = candidates[0];
   if (!selected) return { release: null, manifestSha256: null, selection: "release_index",
-    reason: "No complete published release is available in the selected channel" };
+    reason: lab ? "No matching laboratory target is available in the selected channel"
+      : "No complete published release is available in the selected channel" };
   let manifest: string;
   if (/^https:\/\//i.test(indexSource)) manifest = httpsURL(new URL(text(selected.manifest, "manifest"), indexSource).href);
   else manifest = /^[a-z]+:\/\//i.test(selected.manifest)
     ? httpsURL(selected.manifest) : resolve(dirname(indexSource), text(selected.manifest, "manifest"));
+  if (lab && /^[a-z]+:\/\//i.test(manifest)) throw new Error("Lab manifests must be local files");
   const document = await readDocument(manifest);
   if (document.sha256 !== selected.sha256) throw new Error("Release manifest checksum does not match the index");
   const release = validateRelease(document.value);
   if (release.id !== selected.id || release.version !== selected.version || release.channel !== selected.channel ||
-      release.status !== "published" || release.publishedAt !== selected.publishedAt)
+      release.status !== selected.status || release.publishedAt !== selected.publishedAt)
     throw new Error("Release manifest identity does not match the index");
+  if (lab) {
+    const runtimePath = text(selected.runtimes, "lab runtimes artifact");
+    if (/^[a-z]+:\/\//i.test(runtimePath)) throw new Error("Lab runtime artifacts must be local files");
+    const runtimes = await readDocument(resolve(dirname(indexSource), runtimePath));
+    if (hash(canonical(runtimes.value)) !== release.runtimes.sha256)
+      throw new Error("Lab runtime artifact checksum does not match the release");
+    return { release, manifestSha256: document.sha256, selection: "lab_index",
+      reason: "Local laboratory target with verified runtime catalog; local images and CLI are not published release artifacts" };
+  }
   return { release, manifestSha256: document.sha256, selection: "release_index" };
 }

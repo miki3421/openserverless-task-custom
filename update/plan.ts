@@ -70,6 +70,7 @@ export function buildPlan(inventory: Inventory, target: Plan["target"], mode: Pl
   }
   for (const volume of inventory.volumes) if (volume.phase !== "Bound") blockers.push("volume_not_bound:" + volume.name);
   if (release) {
+    if (release.status === "local") warnings.push("local_laboratory_target; artifact availability and fresh installation are not certified");
     try {
       if (compareVersions(inventory.cluster.kubernetesVersion, release.kubernetes.minVersion) < 0 ||
           (release.kubernetes.maxVersionExclusive &&
