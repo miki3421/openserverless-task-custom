@@ -36,6 +36,15 @@ env:
 
 tasks:
 
+  inventory:
+    desc: inventory all source namespaces and application resources without changing the cluster
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"namespace":{{toJson (default "" .__namespace)}},"instance":{{toJson (default "controller" .__instance)}},"context":{{toJson (default "" .__context)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun migration.ts
+
   default:
     desc: inspect a release or plan an update without changing the cluster
     silent: true

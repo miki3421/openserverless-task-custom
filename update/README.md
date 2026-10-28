@@ -18,6 +18,88 @@ under the License.
 -->
 # Read-only update planning
 
+## Migration inventory and portable export contract
+
+```sh
+ops update inventory --namespace=nuvolaris --json
+ops update inventory --namespace=openserverless --context=source --json
+```
+
+This is the first executable migration phase. It supports arbitrary numbers of
+tenants and stored OpenWhisk resources, without application-specific names,
+source repositories or health endpoints. Applications are not a reliable OPS
+inventory unit: a namespace can contain several packages and applications.
+The unit of coverage is every namespace, identity and stored action, package,
+trigger and rule, including empty tenants and resources inside packages.
+
+Discovery uses the served Whisk API group (`nuvolaris.org` or
+`openserverless.org`) and the actual controller database configuration. It
+cross-checks all WhiskUser resources against the complete OpenWhisk subjects
+and entities databases. Unmanaged namespaces, orphan entities, multiple keys,
+custom runtime images, attachments and extra databases remain visible. It
+does not assume that CRDs alone account for every OpenWhisk namespace.
+Without an explicit namespace, discovery searches the two standard installation
+namespaces and rejects ambiguous installations.
+
+The command requires privileged source Kubernetes access and network access
+to the internal CouchDB service. Source credentials and full documents are
+processed only in memory. The endpoint must be the internal `couchdb` Service,
+owned by the selected Whisk; an external or custom CouchDB needs an adapter.
+Requests are authenticated GETs with no redirects, bounded streamed responses
+and no credentials in URLs. Kubernetes Secret objects are not read by inventory.
+The JSON report contains namespace/entity identifiers, runtime kinds, counts,
+PVC identities and TLS Secret references, but no passwords, keys, email,
+parameters, code, raw annotations or source documents. Save it privately.
+The `collector` identity describes the CLI and task checkout executing the
+inventory, which can be separate from the installed source tasks.
+
+Keyset pagination checks exact row counts, duplicate/out-of-order rows and
+terminal pages, including exact page-size multiples. Database update sequences
+and source configuration fingerprints are rechecked. Failed reads, malformed
+schemas or concurrent definition changes fail instead of producing a partial
+success. This is an observational definition inventory, not a transactionally
+consistent data backup or a review of external application dependencies.
+
+Four routes share the same export/restore contract:
+
+* K3s legacy rebuild, including replacing the old K3s installation.
+* Kind legacy rebuild, retaining the tool and selecting a compatible cluster.
+* Kind to K3s migration, retaining the source until target verification.
+* Release update or migration according to the target compatibility contract.
+
+`bundle.ts` builds a **draft**, versioned export manifest covering all discovered
+namespaces, entity revisions, identity counts and required backend artifacts.
+The target release ID and manifest SHA-256 are pinned in that draft.
+Protected platform configuration and all identity keys belong in the actual
+export, alongside complete OpenWhisk definitions/code/attachments, versioned
+native service data, web assets and persistent-volume recovery material.
+System namespace transformation, custom components, undeclared external
+dependencies, runtime compatibility and cluster-wide non-OPS resources need
+explicit handling. They are never discarded to make the inventory pass.
+
+The export verifier requires exact namespace/entity/artifact coverage,
+quiescence declarations, private regular files and streamed byte/hash checks.
+Its trusted file-reader implementation must confine relative paths to the
+protected export root and reject symlinks. Integrity verification alone does
+not prove data semantics or a successful restore, and never permits uninstall.
+
+Current phase status:
+
+* Source discovery, generic inventory and export contract: implemented.
+* Native data exporters, protected archive writing and target restore: not implemented.
+* Quiescence, restore verification, cluster removal/recreation and cutover: not implemented.
+
+`backupComplete` and `uninstallAllowed` remain false. No existing mutating
+`ops update apply` task consumes these reports. Existing `--check`/`--plan`
+commands remain the 0.9.0 release comparison workflow; inventory is the first
+phase of the separate legacy migration route.
+
+Run the relevant tests with bundled tools on PATH:
+
+```sh
+bun test update setup/kubernetes/images.test.ts
+```
+
 ```sh
 ops update --check
 ops update --plan --json --context=baseline
