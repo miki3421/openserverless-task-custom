@@ -164,7 +164,10 @@ Implemented collectors cover every standard artifact group: `platform-configurat
   when the consistency check fails. The collector stops without retrying or
   accepting the changed snapshot. It rejects native error messages even if a command
   exits zero. An architecture
-  matching Linux runner and the standard single-pod layout are required.
+  matching Linux runner and the standard single-pod layout are required. Native
+  tool log links inside the private temporary diagnostic directory are excluded
+  before artifact traversal. That directory must itself be a private owned real
+  directory. Symbolic/hard links in captured backup data remain forbidden.
 * Milvus uses the official, checksum-pinned **Milvus Backup 0.6.1** Linux AMD64
   executable. `--tools=<private-directory>` must contain `milvus-backup` with the
   exact binary SHA-256 in `storage.ts`. The pinned release archive and its SHA-256

@@ -40,7 +40,8 @@ const SAFE_FAILURES = new Set(["native_collection_failed", "native_storage_comma
   "backup_definitions_or_credentials_changed", "source_database_changed_during_read", "missing_milvus_full_native_metadata",
   "incomplete_milvus_native_metadata_or_rbac", "incomplete_milvus_native_collection_coverage", "incomplete_milvus_native_database_coverage",
   "milvus_catalog_changed_during_backup", "milvus_catalog_read_failed", "unverified_milvus_object_storage_binding",
-  "unsupported_milvus_storage_configuration", "milvus_tool_checksum_mismatch", "storage_backup_target_changed"]);
+  "unsupported_milvus_storage_configuration", "milvus_tool_checksum_mismatch", "storage_backup_target_changed",
+  "unsafe_native_storage_artifact", "unsafe_native_storage_temporary_directory"]);
 function safeFailure(error: any): string {
   if (SAFE_FAILURES.has(error?.message)) return error.message;
   if (["ENOENT", "ENOSPC", "EACCES", "EEXIST"].includes(error?.code)) return "filesystem_" + error.code.toLowerCase();

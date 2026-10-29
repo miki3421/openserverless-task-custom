@@ -17,7 +17,7 @@
 
 
 import { test, expect } from "bun:test";
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, symlinkSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { filerTree, validateMilvusMetadata, verifyMilvusTool, collectSeaweed, collectMilvus, runPrivate,
@@ -94,6 +94,12 @@ test("SeaweedFS uses the exact captured binary, native volume files and stable f
     { Entries: [{ FullPath: "/synthetic", Mode: 0, FileSize: 8, Chunks: [{ file_id: "synthetic" }] }] };
   const run: PrivateRunner = async (_, args, out, label) => {
     labels.push(label);
+    if (label === "weed-version") {
+      mkdirSync(join(out, "tmp"), { mode: 0o700 });
+      writeFileSync(join(out, "tmp/native.log"), "synthetic diagnostics", { mode: 0o600 });
+      symlinkSync("native.log", join(out, "tmp/weed.INFO"));
+      symlinkSync("native.log", join(out, "tmp/weed.WARNING"));
+    }
     if (label === "weed-metadata") writeFileSync(join(out, "filer.meta"), "synthetic metadata");
     if (label === "weed-volume-1") { writeFileSync(join(out, "volumes/synthetic_1.dat"), "synthetic data"); writeFileSync(join(out, "volumes/synthetic_1.idx"), ""); }
   };
@@ -104,6 +110,8 @@ test("SeaweedFS uses the exact captured binary, native volume files and stable f
     expect(labels).toEqual(["weed-version", "weed-metadata", "weed-volume-1"]);
     expect(files.find(p => p.path.endsWith(".idx"))?.bytes).toBe(0);
     expect(files.some(p => p.path === "filer-manifest.json")).toBe(true);
+    expect(files.some(p => p.path.startsWith("tmp/"))).toBe(false);
+    expect(lstatSync(join(root, "tmp/weed.INFO")).isSymbolicLink()).toBe(true);
     expect(JSON.stringify(files)).not.toContain(CANARY);
     expect(statSync(join(root, "weed")).mode & 0o777).toBe(0o700);
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -182,3 +190,33 @@ test("SeaweedFS retains private before/after evidence and never retries a consis
       expect(statSync(join(root, file)).mode & 0o777).toBe(0o600);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+for (const variant of ["artifact-link", "temporary-root-link"]) {
+  test("native backup still rejects unsafe links: " + variant, async () => {
+    const f = fixture(), root = output();
+    const get: JSONClient = async origin => origin.endsWith(":8080") ? { Volumes: [{ Id: 1, Collection: "synthetic" }] } :
+      { Entries: [{ FullPath: "/synthetic", Mode: 0, FileSize: 8 }] };
+    const run: PrivateRunner = async (_, args, out, label) => {
+      if (label === "weed-version") {
+        if (variant === "temporary-root-link") {
+          mkdirSync(join(out, "diagnostics"), { mode: 0o700 }); symlinkSync("diagnostics", join(out, "tmp"));
+        } else {
+          mkdirSync(join(out, "tmp"), { mode: 0o700 });
+          writeFileSync(join(out, "tmp/native.log"), "diagnostics", { mode: 0o600 });
+          symlinkSync("native.log", join(out, "tmp/weed.INFO"));
+        }
+      }
+      if (label === "weed-metadata") writeFileSync(join(out, "filer.meta"), "metadata");
+      if (label === "weed-volume-1") {
+        writeFileSync(join(out, "volumes/synthetic_1.dat"), "data"); writeFileSync(join(out, "volumes/synthetic_1.idx"), "");
+        if (variant === "artifact-link") symlinkSync("../tmp/native.log", join(out, "volumes/unexpected-link"));
+      }
+    };
+    try {
+      const code = variant === "artifact-link" ? "unsafe_native_storage_artifact" : "unsafe_native_storage_temporary_directory";
+      await expect(collectSeaweed(f.plan, root, f.read, async (_, fd) => {
+        const binary = Buffer.alloc(64); binary.write("\x7fELF"); binary[4] = 2; binary[5] = 1; binary.writeUInt16LE(62, 18); writeFileSync(fd, binary); return 0;
+      }, get, run)).rejects.toThrow(code);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+}

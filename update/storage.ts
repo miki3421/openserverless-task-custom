@@ -20,7 +20,7 @@ import { chmodSync, closeSync, constants, lstatSync, mkdirSync, openSync, readFi
 import { createReadStream } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { isIP } from "node:net";
-import { join, dirname, resolve, sep } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { canonical } from "./releases";
 import { listItems, scoped, type KubeRead } from "./source";
 import type { BackupPlan } from "./backup";
@@ -89,11 +89,19 @@ export const runPrivate: PrivateRunner = async (program, args, output, label, in
       throw new Error("native_storage_command_reported_error");
   } finally { closeSync(out); if (err !== undefined) closeSync(err); }
 };
-function privateTree(root: string): string[] {
+function privateTree(root: string, excludedTemporaryDirectories: ReadonlySet<string> = new Set()): string[] {
   const files: string[] = [];
   const walk = (directory: string) => {
     for (const name of readdirSync(directory).sort()) {
       const path = join(directory, name), st = lstatSync(path);
+      if (directory === root && excludedTemporaryDirectories.has(name)) {
+        // Native tools create log symlinks in TMPDIR. They are diagnostics,
+        // never backup data. Validate the private directory without traversing
+        // its contents; all artifact subtrees retain the strict link checks.
+        if (!st.isDirectory() || st.isSymbolicLink() || (st.mode & 0o077) || st.uid !== process.getuid?.())
+          throw new Error("unsafe_native_storage_temporary_directory");
+        continue;
+      }
       if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile()) || (st.isFile() && st.nlink !== 1))
         throw new Error("unsafe_native_storage_artifact");
       chmodSync(path, st.isDirectory() ? 0o700 : 0o600);
@@ -203,7 +211,8 @@ export async function collectSeaweed(plan: BackupPlan, output: string, read: Kub
   privateJSON(join(output, "seaweed-backup.json"), { method: "native fs.meta.save and weed backup", sourceImage: target.image,
     metadataEntries: Object.keys(before).length, volumes: volumes.length, referencesStableDuringBackup: true,
     restoredFilesVerified: false, backupComplete: false });
-  const paths = privateTree(output).filter(p => !/\.(stdout|stderr)$/.test(p) && !p.startsWith(join(output, "tmp") + sep) && !p.endsWith("/collection.json"));
+  const paths = privateTree(output, new Set(["tmp"]))
+    .filter(p => !/\.(stdout|stderr)$/.test(p) && !p.endsWith("/collection.json"));
   // privateTree normalizes binary mode too; retain the captured recovery tool as a private executable.
   chmodSync(tool, 0o700);
   return Promise.all(paths.map(path => artifactInfo(output, path)));
@@ -311,6 +320,6 @@ export async function collectMilvus(plan: BackupPlan, output: string, read: Kube
   if (canonical(before) !== canonical(await milvusCatalog(origin, password, get))) throw new Error("milvus_catalog_changed_during_backup");
   privateJSON(join(output, "milvus-catalog.json"), { backupName, catalog: before, tool: MILVUS_BACKUP_TOOL,
     rbacIncluded: true, restoredCollectionsVerified: false, backupComplete: false });
-  privateTree(output);
+  privateTree(output, new Set(["tmp"]));
   return Promise.all([configPath, join(output, "milvus-catalog.json"), ...paths].map(path => artifactInfo(output, path)));
 }
