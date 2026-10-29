@@ -160,7 +160,10 @@ Implemented collectors cover every standard artifact group: `platform-configurat
 * SeaweedFS captures the matching `weed` executable from its existing pod and
   checks the binary architecture. It exports native filer metadata and every volume,
   comparing the complete paged filer tree and volume identities before/after.
-  It rejects native error messages even if a command exits zero. An architecture
+  Private filer/volume snapshots and a summary of changed fields are retained even
+  when the consistency check fails. The collector stops without retrying or
+  accepting the changed snapshot. It rejects native error messages even if a command
+  exits zero. An architecture
   matching Linux runner and the standard single-pod layout are required.
 * Milvus uses the official, checksum-pinned **Milvus Backup 0.6.1** Linux AMD64
   executable. `--tools=<private-directory>` must contain `milvus-backup` with the

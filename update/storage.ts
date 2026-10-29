@@ -165,6 +165,7 @@ export async function collectSeaweed(plan: BackupPlan, output: string, read: Kub
   chmodSync(tool, 0o700);
   await run(tool, ["version"], output, "weed-version");
   const before = await filerTree(filer, get);
+  privateJSON(join(output, "filer-before.json"), before);
   const volumes = (await get(volume, "/status")).Volumes;
   if (!Array.isArray(volumes)) throw new Error("invalid_seaweed_volume_inventory");
   const ids = new Set<number>();
@@ -173,6 +174,8 @@ export async function collectSeaweed(plan: BackupPlan, output: string, read: Kub
         (v.Collection && (typeof v.Collection !== "string" || !/^[A-Za-z0-9_.-]+$/.test(v.Collection)))) throw new Error("invalid_seaweed_volume_identity");
     ids.add(v.Id);
   }
+  const volumeIdentities = (rows: any[]) => rows.map(v => [v.Id, v.Collection || ""]).sort();
+  privateJSON(join(output, "volumes-before.json"), volumeIdentities(volumes));
   mkdirSync(join(output, "volumes"), { mode: 0o700 });
   await run(tool, ["shell", "-master=" + master, "-filer=" + filer.slice(7)], output, "weed-metadata", "fs.meta.save -o filer.meta /\n");
   if (!lstatSync(join(output, "filer.meta")).isFile()) throw new Error("missing_seaweed_metadata_backup");
@@ -182,8 +185,20 @@ export async function collectSeaweed(plan: BackupPlan, output: string, read: Kub
     for (const extension of [".dat", ".idx"]) if (!lstatSync(join(output, "volumes", base + extension)).isFile()) throw new Error("missing_seaweed_volume_backup");
   }
   const afterVolumes = (await get(volume, "/status")).Volumes;
-  if (canonical(volumes.map(v => [v.Id, v.Collection || ""]).sort()) !== canonical(afterVolumes.map((v: any) => [v.Id, v.Collection || ""]).sort()) ||
-      canonical(before) !== canonical(await filerTree(filer, get))) throw new Error("seaweed_source_changed_during_backup");
+  if (!Array.isArray(afterVolumes)) throw new Error("invalid_seaweed_volume_inventory");
+  const after = await filerTree(filer, get);
+  privateJSON(join(output, "volumes-after.json"), volumeIdentities(afterVolumes));
+  privateJSON(join(output, "filer-after.json"), after);
+  const added = Object.keys(after).filter(path => !Object.hasOwn(before, path));
+  const removed = Object.keys(before).filter(path => !Object.hasOwn(after, path));
+  const changed = Object.keys(before).filter(path => Object.hasOwn(after, path) && canonical(before[path]) !== canonical(after[path]));
+  const volumesStable = canonical(volumeIdentities(volumes)) === canonical(volumeIdentities(afterVolumes));
+  privateJSON(join(output, "consistency.json"), { volumesStable, addedEntries: added.length, removedEntries: removed.length,
+    changedEntries: changed.length, changedSamples: changed.slice(0, 20).map(path => ({
+      pathSha256: createHash("sha256").update(path).digest("hex"),
+      fields: [...new Set([...Object.keys(before[path]), ...Object.keys(after[path])])]
+        .filter(key => canonical(before[path][key] ?? null) !== canonical(after[path][key] ?? null)).sort() })) });
+  if (!volumesStable || added.length || removed.length || changed.length) throw new Error("seaweed_source_changed_during_backup");
   privateJSON(join(output, "filer-manifest.json"), before);
   privateJSON(join(output, "seaweed-backup.json"), { method: "native fs.meta.save and weed backup", sourceImage: target.image,
     metadataEntries: Object.keys(before).length, volumes: volumes.length, referencesStableDuringBackup: true,

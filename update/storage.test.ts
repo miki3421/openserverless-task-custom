@@ -160,3 +160,25 @@ test("an object storage selector or environment override cannot silently change 
       .rejects.toThrow("environment_override");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test("SeaweedFS retains private before/after evidence and never retries a consistency failure", async () => {
+  const f = fixture(), root = output(); let trees = 0, backups = 0;
+  const get: JSONClient = async origin => origin.endsWith(":8080") ? { Volumes: [{ Id: 1, Collection: "synthetic" }] } :
+    { Entries: [{ FullPath: "/synthetic", Mode: 0, FileSize: 8, Mtime: ++trees }] };
+  const run: PrivateRunner = async (_, args, out, label) => {
+    if (label === "weed-metadata") writeFileSync(join(out, "filer.meta"), "metadata");
+    if (label === "weed-volume-1") { backups++; writeFileSync(join(out, "volumes/synthetic_1.dat"), "data"); writeFileSync(join(out, "volumes/synthetic_1.idx"), ""); }
+  };
+  try {
+    await expect(collectSeaweed(f.plan, root, f.read, async (_, fd) => {
+      const binary = Buffer.alloc(64); binary.write("\x7fELF"); binary[4] = 2; binary[5] = 1; binary.writeUInt16LE(62, 18); writeFileSync(fd, binary); return 0;
+    }, get, run)).rejects.toThrow("source_changed_during_backup");
+    expect(backups).toBe(1); expect(trees).toBe(2);
+    const summary = JSON.parse(readFileSync(join(root, "consistency.json"), "utf8"));
+    expect(summary.volumesStable).toBe(true); expect(summary.changedEntries).toBe(1);
+    expect(summary.changedSamples[0].fields).toEqual(["Mtime"]);
+    expect(JSON.stringify(summary)).not.toContain("/synthetic");
+    for (const file of ["filer-before.json", "filer-after.json", "volumes-before.json", "volumes-after.json", "consistency.json"])
+      expect(statSync(join(root, file)).mode & 0o777).toBe(0o600);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
