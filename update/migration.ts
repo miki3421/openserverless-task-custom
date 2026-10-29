@@ -17,6 +17,7 @@
 
 
 import { isIP } from "node:net";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { reader, localClient } from "./inventory";
 import { canonical, hash } from "./releases";
@@ -49,6 +50,7 @@ export interface MigrationInventory {
   components: string[]; volumes: { name: string; uid: string; storageClass: string | null; phase: string }[];
   tlsReferences: { ingress: string; secret: string }[];
   databaseCounts: { subjects: number; entities: number; otherDatabases: number };
+  definitionsSha256: string; tenantConfigSha256: string;
   coverage: { subjectsScanned: true; entitiesScanned: true; definitionsStableDuringRead: true;
     applicationCodeInspected: false; externalDependenciesDiscovered: false; clusterWideWorkloadsInspected: false };
   blockers: string[]; requiredArtifacts: { id: string; purpose: string; status: "not_exported"; sensitive: boolean }[];
@@ -222,8 +224,12 @@ export async function inventoryMigration(options: { namespace?: string; instance
     userAuth.set(row.name, text(user.spec.auth, "tenant_auth"));
   }
   const matched = new Set<string>();
+  // Detect changed code, parameters or credentials even when resource counts
+  // stay equal. Only the combined fingerprints leave memory, never documents.
+  const definitions = createHash("sha256").update(canonical([...allDatabases].sort())).update("\nsubjects\n");
   const namespaceCredentials = new Map<string, Set<string>>();
   const subjectCount = await scanDatabase(get, databases.subjects, doc => {
+    definitions.update(canonical(doc)).update("\n");
     if (doc._id.startsWith("_design/")) return;
     if (!Array.isArray(doc.namespaces)) throw new Error("unsupported_subject_document");
     for (const ns of doc.namespaces) {
@@ -237,7 +243,9 @@ export async function inventoryMigration(options: { namespace?: string; instance
       if (userAuth.get(row.name) === auth) matched.add(row.name);
     }
   });
+  definitions.update("entities\n");
   const entityCount = await scanDatabase(get, databases.entities, doc => {
+    definitions.update(canonical(doc)).update("\n");
     if (doc._id.startsWith("_design/")) return;
     const entity = entityRecord(doc);
     const name = entity.namespace.split("/")[0];
@@ -293,6 +301,7 @@ export async function inventoryMigration(options: { namespace?: string; instance
       context: options.context || read(["config", "current-context"], true) },
     collector: client, namespaces: [...records.values()].sort((a, b) => a.name.localeCompare(b.name)), components,
     volumes, tlsReferences, databaseCounts: { subjects: subjectCount, entities: entityCount, otherDatabases: otherDatabases.length },
+    definitionsSha256: definitions.digest("hex"), tenantConfigSha256: userFingerprint(users),
     coverage: { subjectsScanned: true, entitiesScanned: true, definitionsStableDuringRead: true,
       applicationCodeInspected: false, externalDependenciesDiscovered: false, clusterWideWorkloadsInspected: false },
     blockers: [...blockers].sort(), requiredArtifacts, inventorySha256: "" };

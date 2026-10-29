@@ -86,13 +86,106 @@ not prove data semantics or a successful restore, and never permits uninstall.
 Current phase status:
 
 * Source discovery, generic inventory and export contract: implemented.
-* Native data exporters, protected archive writing and target restore: not implemented.
+* Native backup bindings, protected per-component collectors and receipt integrity checks: implemented; synthetic validation only.
+* Complete backup orchestration, encryption/independent storage and target restore: not implemented.
 * Quiescence, restore verification, cluster removal/recreation and cutover: not implemented.
 
 `backupComplete` and `uninstallAllowed` remain false. No existing mutating
 `ops update apply` task consumes these reports. Existing `--check`/`--plan`
 commands remain the 0.9.0 release comparison workflow; inventory is the first
 phase of the separate legacy migration route.
+
+## Native backup adapters
+
+The pinned procedure reference is
+[`miki3421/ops-k3s-backup` at `4f9618e`](https://github.com/miki3421/ops-k3s-backup/tree/4f9618e74d196b393a08776989ce2b2968fcb771).
+The operator reports that procedure tested on **0.9.0 RC7**. That evidence is
+recorded as provenance, not as a test of a different source release, guest
+architecture, database major version or migration route. No code is downloaded
+from that repository by these tasks.
+
+```sh
+# Save inventory and reports outside Git; the directory must be private.
+umask 077
+ops update inventory --namespace=nuvolaris --json > /private/path/inventory.json
+ops update backup-plan --inventory=/private/path/inventory.json --json
+```
+
+`backup-plan` rereads the complete definition/identity inventory and refuses
+changed resource revisions, code, parameters or credentials, including changes
+that keep resource counts equal. Fresh inventory reports carry opaque combined
+`definitionsSha256` and `tenantConfigSha256` fingerprints; older reports must
+be regenerated. It binds the selected source context, Whisk configuration,
+cluster/namespace UIDs, actual PVC UIDs and workload ownership. It resolves
+current pod names through StatefulSet, ReplicaSet and Kubegres ownership and
+uses actual container mount paths. It does not replace text globally or assume
+pod ordinals. PostgreSQL replicas, unknown PVCs, ambiguous mounts and unready
+containers remain blockers. No generic raw-copy fallback exists for databases.
+
+The plan covers every inventory-required artifact plus **separate Redis ACLs**.
+It maps shared service data for all tenants, rather than selecting a configured
+application. Missing collectors and qualification steps remain explicit.
+
+```sh
+# This command performs a backup of one component. The destination must be new
+# and its existing parent must be private and owned by the current operator.
+ops update backup-collect --inventory=/private/path/inventory.json --component=redis-acl --artifacts=/private/path/redis-acl-run --json
+```
+
+Implemented collectors are `postgres-data`, `couchdb-data`, `redis-data`,
+`redis-acl`, `etcd-data`, `registry-data` and `persistent-volume-recovery`:
+
+* PostgreSQL uses `pg_basebackup` with streamed WAL and `pg_verifybackup`.
+* CouchDB copies every append-only `.couch` file, bounded to its open descriptor's
+  initial length. Code attachments and extra databases remain in this physical
+  backup; transformation and logical restore acceptance are separate work.
+* Redis uses replication RDB plus native validation; ACLs are collected separately.
+* Application etcd uses native snapshot/status and retains its restore utility.
+* File collectors cover known static/operator/Tika volumes and registry blobs,
+  resolving actual mounts and excluding active registry uploads. They emit a PVC
+  recovery map; database data must come from the independent native collectors.
+
+Commands use existing authorized service containers, explicit container names
+and source context. Credentials travel in stdin or existing container
+credentials, never command arguments or public output. Native collectors can
+create temporary backup files inside those containers; normal shell exit cleans
+these up. An abrupt process/container termination may require private operator
+cleanup. The source is not frozen and application writes are not stopped.
+Collection stops at the first error without retry and retains private diagnostics.
+A fresh definition scan runs before and after collection. Existing output
+directories are refused; files use mode 0600 beneath mode 0700 directories.
+Each run emits only a **partial receipt** and cannot pass whole-backup verification.
+These artifacts are private plaintext; encrypted packaging and independently
+recoverable storage/keys must be supplied before a final migration backup.
+
+Physical database backups require compatible restore versions. They do not
+implement Nuvolaris-to-OpenServerless resource conversion. SeaweedFS matching
+binary qualification, populated Milvus native backup, FerretDB backend binding,
+complete protected platform/OpenWhisk exports and source quiescence still block
+migration. The RC7 recovery guest is ARM64-specific; AMD64 restore and Kind
+control-plane recovery remain unqualified. Restoring the original K3s datastore
+and binary is recovery of the original installation, not a target-release install.
+
+```sh
+ops update backup-verify --inventory=/private/path/inventory.json --receipt=/private/path/receipt.json --artifacts=/private/path/artifacts --json
+```
+
+The normalized receipt is `schemaVersion: 1`, `kind: ops-native-backup-receipt`.
+It contains `inventorySha256`, the exact plan `source` and `procedure` objects,
+`consistency` (`per-component-online` or `quiesced-final`) and `components`.
+Every component has `id`, the plan's exact `method`, `scope: all-service-data`,
+nonempty `files` (`path`, `bytes`, `sha256`) and `pvcs` (`name`, `uid`). All expected
+component IDs must occur exactly once. Each component must cover its mapped PVCs;
+`persistent-volume-recovery` must include the complete PVC map. Redis ACLs are
+required even when an RDB exists. Relative artifact paths must be unique,
+confined, private regular files; symlinks and hardlinks are refused.
+The selected source must remain available and match the inventory.
+
+Verification streams every byte and checks declared component/PVC coverage.
+A producer's scope or `quiesced-final` declaration is not independent proof of
+semantic contents, a write freeze, off-host recoverability or restored application
+behavior. Verification always leaves `backupComplete` and `uninstallAllowed`
+false. A release-specific restore adapter and isolated acceptance are still required.
 
 Run the relevant tests with bundled tools on PATH:
 

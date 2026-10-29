@@ -265,3 +265,15 @@ test("export integrity checks stream data and reject missing tenants, corruption
   await expect(verifyExport(traversal, report, { open })).rejects.toThrow("invalid_export_file");
   await expect(verifyExport(bundle, report, { open: async () => ({ ...(await open()), privateRegularFile: false }) })).rejects.toThrow("private_regular_file");
 });
+
+test("opaque definition fingerprints detect changed code or keys without printing either", async () => {
+  const f = fixture(), before = await f.run();
+  f.entities.find(d => d.exec).exec.code = "DIFFERENT_PRIVATE_CODE";
+  const after = await f.run();
+  expect(before.definitionsSha256).not.toBe(after.definitionsSha256);
+  expect(before.namespaces).toEqual(after.namespaces);
+  f.users[0].spec.password = "DIFFERENT_PRIVATE_PASSWORD";
+  const third = await f.run();
+  expect(third.tenantConfigSha256).not.toBe(after.tenantConfigSha256);
+  expect(JSON.stringify(third)).not.toContain("DIFFERENT_PRIVATE");
+});

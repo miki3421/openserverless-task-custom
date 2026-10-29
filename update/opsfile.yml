@@ -36,6 +36,33 @@ env:
 
 tasks:
 
+  backup-plan:
+    desc: map every inventoried backend and PVC to the pinned native backup procedure without collecting data
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"inventory":{{toJson (default "" .__inventory)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun backup.ts
+
+  backup-collect:
+    desc: collect one explicitly selected native backup component into a fresh private directory
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"inventory":{{toJson (default "" .__inventory)}},"component":{{toJson (default "" .__component)}},"artifacts":{{toJson (default "" .__artifacts)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun native.ts
+
+  backup-verify:
+    desc: verify native backup artifact integrity and declared inventory coverage without restoring data
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"verify":true,"inventory":{{toJson (default "" .__inventory)}},"receipt":{{toJson (default "" .__receipt)}},"artifacts":{{toJson (default "" .__artifacts)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun backup.ts
+
   inventory:
     desc: inventory all source namespaces and application resources without changing the cluster
     silent: true

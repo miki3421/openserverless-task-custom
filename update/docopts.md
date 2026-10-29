@@ -24,6 +24,9 @@ Inspect the installed platform and compare it with a pinned release.
 ```text
 Usage:
   update inventory [--namespace=<namespace>] [--instance=<instance>] [--context=<context>] [--json]
+  update backup-plan --inventory=<file> [--json]
+  update backup-collect --inventory=<file> --component=<id> --artifacts=<directory> [--json]
+  update backup-verify --inventory=<file> --receipt=<file> --artifacts=<directory> [--json]
   update (--check | --plan) [--manifest=<file> | --index=<source>] [--to=<release>] [--channel=<channel>] [--context=<context>] [--namespace=<namespace>] [--instance=<instance>] [--json]
   update (cli | operator | runtimes | apply | secrets)
 ```
@@ -41,6 +44,10 @@ Usage:
   --namespace=<namespace> Installation namespace; plans default to openserverless, inventory auto-detects.
   --instance=<instance>   Whisk resource name [default: controller].
   --json                  Print a structured report.
+  --inventory=<file>      Protected source inventory JSON; selects the source context and identity.
+  --receipt=<file>        Protected normalized native backup receipt.
+  --artifacts=<directory> Private root containing collected artifacts.
+  --component=<id>        Explicitly selected native backup component; never collects other components implicitly.
 ```
 
 Use `--option=value` for options with values. Local paths are resolved from
@@ -68,6 +75,26 @@ blocked. The source CLI and installation stay unchanged. Kubernetes read failure
 unsupported schemas, incomplete pages and changes to source definitions fail the
 command. Data exporters, quiescence, restore and cluster provisioning are separate
 migration phases that are not implemented by this command.
+
+`backup-plan` binds the explicit inventory to live source configuration, the
+selected Kubernetes context, cluster identity, workload owners and actual PVC
+mounts. It maps the pinned native backup procedure without running collectors.
+Its JSON includes collection and migration blockers; exit code `3` means a
+blocked plan. Source credentials and application documents are never printed.
+
+`backup-verify` rechecks those source identities and verifies a normalized
+receipt against every required artifact category, including separate Redis
+ACLs, exact PVC coverage and private artifact byte counts and SHA-256 hashes.
+It checks declared scope, not the semantics of database contents, quiescence,
+encryption, independent storage or a working restore. An unchanged source must
+remain accessible for this receipt verification phase. See README for the
+receipt contract. Neither command runs backup, restore or source removal.
+
+`backup-collect` performs the selected native backup and writes private artifacts,
+diagnostics and a partial receipt in a fresh directory beneath a private parent.
+It may create temporary backup files inside the selected service container;
+these are removed on normal shell exit. It never freezes services or restores
+data. Read the supported components and limitations in README before use.
 
 `cli`, `operator`, `runtimes`, `apply`, and `secrets` retain their existing
 behavior. These commands can change the installation or local configuration;
