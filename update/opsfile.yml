@@ -36,6 +36,24 @@ env:
 
 tasks:
 
+  backup-pack:
+    desc: encrypt a verified native backup and validate a fresh archive restore
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"inventory":{{toJson (default "" .__inventory)}},"backupPlan":{{toJson (default "" .__backup_plan)}},"artifacts":{{toJson (default "" .__artifacts)}},"archive":{{toJson (default "" .__archive)}},"workspace":{{toJson (default "" .__workspace)}},"password":{{toJson (default "" .__password_file)}},"tools":{{toJson (default "" .__tools)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun archive.ts
+
+  backup-unpack:
+    desc: decrypt and verify a backup without connecting to the source cluster
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"unpack":true,"archive":{{toJson (default "" .__archive)}},"workspace":{{toJson (default "" .__workspace)}},"password":{{toJson (default "" .__password_file)}},"tools":{{toJson (default "" .__tools)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun archive.ts
+
   backup-plan:
     desc: map every inventoried backend and PVC to the pinned native backup procedure without collecting data
     silent: true

@@ -95,6 +95,49 @@ Current phase status:
 commands remain the 0.9.0 release comparison workflow; inventory is the first
 phase of the separate legacy migration route.
 
+## Encrypted archives and offline recovery
+
+```sh
+ops update backup-pack --inventory=/private/source/inventory.json --backup-plan=/private/source/plan.json --artifacts=/private/source/artifacts --archive=/private/new-archive --password-file=/private/keys/recovery-key --tools=/private/tools --workspace=/private/new-pack-work --json
+ops update backup-unpack --archive=/private/copied-archive --password-file=/private/keys/recovery-key --tools=/private/tools --workspace=/private/new-unpack-work --json
+```
+
+The qualified archive tool is official Restic **0.19.1 Linux AMD64**. Its release
+archive and executable SHA-256 values are pinned in `archive.ts`. Put the verified
+`restic` executable in the private tools directory. Unpacking also requires
+Python 3.12+ for the confined regular-file extraction helper. No prerequisite
+installer downloads or replaces source CLI tools.
+
+Packing verifies the explicit inventory, saved source plan, exact PVC mapping,
+receipt coverage and all artifact hashes without contacting Kubernetes. It
+copies only receipt-declared files into a fresh private portable payload with
+inventory/plan/receipt metadata. Temporary logs and failed captures are excluded.
+Restic encrypts a single portable tar, checks all repository data and restores
+that tar to fresh staging for a full byte/hash comparison. The archive directory
+contains the encrypted repository and a credential-free `archive.json` selecting
+the exact snapshot and tar/config hashes. Plaintext payload/work logs stay in
+the separate private workspace; they are not the independent recovery copy.
+
+Keep the single-line key (at least 32 characters, mode 0600) outside source
+artifacts, archive and workspace. Keep it recoverable independently of the source
+VM. All new output parents must already be private and operator-owned; output
+paths are fresh and disjoint. Copies of archives must retain private root and
+record permissions. A copy on the hypervisor is independent of the source VM,
+not of that physical host or storage system.
+
+Unpacking uses only the copied archive, key and tool. It verifies all encrypted
+repository data, selects the pinned snapshot, compares the restored tar hash,
+rejects traversal, duplicate paths, symbolic/hard links and special files, then
+revalidates every extracted artifact and the complete metadata/volume contract.
+It never connects to a source cluster. Target files are mode 0600 beneath mode
+0700 directories; pre-existing targets are refused.
+
+Archive recovery is separate from starting restored databases and proving
+application behavior. Per-component online captures remain preliminary: a final
+coordinated write freeze, scheduler stop, invocation drain and fresh collection
+are required before destructive migration. `backupComplete` and
+`uninstallAllowed` stay false after encryption or unpacking.
+
 ## Native backup adapters
 
 The pinned procedure reference is

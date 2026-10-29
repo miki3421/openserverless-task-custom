@@ -27,6 +27,8 @@ Usage:
   update backup-plan --inventory=<file> [--json]
   update backup-collect --inventory=<file> --component=<id> --artifacts=<directory> [--tools=<directory>] [--json]
   update backup-assemble --inventory=<file> --artifacts=<directory> [--json]
+  update backup-pack --inventory=<file> --backup-plan=<file> --artifacts=<directory> --archive=<directory> --password-file=<file> --tools=<directory> [--workspace=<directory>] [--json]
+  update backup-unpack --archive=<directory> --password-file=<file> --tools=<directory> --workspace=<directory> [--json]
   update backup-verify --inventory=<file> --receipt=<file> --artifacts=<directory> [--json]
   update (--check | --plan) [--manifest=<file> | --index=<source>] [--to=<release>] [--channel=<channel>] [--context=<context>] [--namespace=<namespace>] [--instance=<instance>] [--json]
   update (cli | operator | runtimes | apply | secrets)
@@ -50,6 +52,10 @@ Usage:
   --artifacts=<directory> Private root containing collected artifacts.
   --component=<id>        Explicitly selected native backup component; never collects other components implicitly.
   --tools=<directory>     Private directory with the pinned Milvus Backup executable; required for milvus-data.
+  --backup-plan=<file>    Protected saved native backup plan.
+  --archive=<directory>  Encrypted archive directory; packing requires a fresh destination.
+  --password-file=<file> Private single-line archive key, at least 32 characters; keep outside archive/workspace.
+  --workspace=<directory> Fresh private working directory; unpacking requires this explicitly.
 ```
 
 Use `--option=value` for options with values. Local paths are resolved from
@@ -105,6 +111,18 @@ a new combined `receipt.json`. It refuses existing combined receipts, failed or
 partial collection records, missing components, links and changed source
 definitions. Assembly does not establish a consistent final migration backup,
 encrypted independent recovery or a working restore.
+
+`backup-pack` copies only receipt-declared artifacts and protected metadata into a
+private portable payload, encrypts it with pinned Restic, checks all repository
+data and compares a fresh tar restore. The encrypted archive directory contains
+the repository and a credential-free archive record; plaintext work remains in
+the separate private workspace. Keep the key independently recoverable.
+
+`backup-unpack` needs only that archive, its key and the pinned tool; it never
+contacts the source cluster. It verifies the selected snapshot, extracts regular
+payload files safely into a fresh private directory and rechecks every artifact.
+Linux AMD64, Restic 0.19.1 and Python 3.12+ are the qualified prerequisites.
+Archive integrity is separate from database recovery and final write quiescence.
 
 `cli`, `operator`, `runtimes`, `apply`, and `secrets` retain their existing
 behavior. These commands can change the installation or local configuration;
