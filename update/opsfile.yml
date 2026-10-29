@@ -50,7 +50,7 @@ tasks:
     silent: true
     env:
       OPS_UPDATE_REQUEST: >-
-        {"inventory":{{toJson (default "" .__inventory)}},"component":{{toJson (default "" .__component)}},"artifacts":{{toJson (default "" .__artifacts)}},"json":{{toJson (default false .__json)}}}
+        {"inventory":{{toJson (default "" .__inventory)}},"component":{{toJson (default "" .__component)}},"artifacts":{{toJson (default "" .__artifacts)}},"tools":{{toJson (default "" .__tools)}},"json":{{toJson (default false .__json)}}}
     cmds:
       - bun native.ts
 
@@ -60,6 +60,15 @@ tasks:
     env:
       OPS_UPDATE_REQUEST: >-
         {"verify":true,"inventory":{{toJson (default "" .__inventory)}},"receipt":{{toJson (default "" .__receipt)}},"artifacts":{{toJson (default "" .__artifacts)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun backup.ts
+
+  backup-assemble:
+    desc: assemble complete inventory-bound component receipts and verify every private artifact
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"assemble":true,"inventory":{{toJson (default "" .__inventory)}},"artifacts":{{toJson (default "" .__artifacts)}},"json":{{toJson (default false .__json)}}}
     cmds:
       - bun backup.ts
 

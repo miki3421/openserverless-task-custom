@@ -84,7 +84,7 @@ export function entityRecord(doc: any): Entity {
     runtime, attachments: doc._attachments && typeof doc._attachments === "object" ? Object.keys(doc._attachments).length : 0,
     scheduled: type === "action" && Array.isArray(doc.annotations) && doc.annotations.some((a: any) => a?.key === "cron") };
 }
-export async function scanDatabase(get: GetJSON, database: string, consume: (doc: any) => void): Promise<number> {
+export async function scanDatabase(get: GetJSON, database: string, consume: (doc: any) => void | Promise<void>): Promise<number> {
   if (!/^[a-z][a-z0-9_$()+/-]*$/.test(database) || database.includes("/"))
     throw new Error("invalid_source_database");
   const base = "/" + encodeURIComponent(database);
@@ -109,7 +109,7 @@ export async function scanDatabase(get: GetJSON, database: string, consume: (doc
       last = row.id;
       count++;
       if (count > page.total_rows) throw new Error("database_pagination_overflow");
-      consume(row.doc);
+      await consume(row.doc);
     }
     if (page.rows.length < PAGE) break;
   }
@@ -119,7 +119,7 @@ export async function scanDatabase(get: GetJSON, database: string, consume: (doc
     throw new Error("source_database_changed_during_read");
   return count;
 }
-function controllerDatabases(controller: any): { subjects: string; entities: string; activations: string } {
+export function controllerDatabases(controller: any): { subjects: string; entities: string; activations: string } {
   const containers = controller.spec?.template?.spec?.containers;
   const container = containers?.find((c: any) => c.name === "controller");
   if (!container) throw new Error("controller_container_not_found");
@@ -135,7 +135,7 @@ function controllerDatabases(controller: any): { subjects: string; entities: str
   if (new Set(Object.values(result)).size !== 3) throw new Error("ambiguous_controller_database_configuration");
   return result;
 }
-export function couchReader(source: Source, service: any, controller: any): GetJSON {
+export function couchHTTP(source: Source, service: any, controller: any): (path: string, timeout?: number) => Promise<Response> {
   if (!service.metadata?.ownerReferences?.some((o: any) => o.uid === source.uid) ||
       !controller.metadata?.ownerReferences?.some((o: any) => o.uid === source.uid))
     throw new Error("unverified_couchdb_or_controller_ownership");
@@ -146,14 +146,21 @@ export function couchReader(source: Source, service: any, controller: any): GetJ
   const auth = Buffer.from(text(credentials?.user, "couchdb_user") + ":" +
     text(credentials?.password, "couchdb_password")).toString("base64");
   const origin = "http://" + (isIP(ip) === 6 ? "[" + ip + "]" : ip) + ":5984";
-  return async path => {
+  return async (path, timeout = 15000) => {
     if (!path.startsWith("/") || path.startsWith("//") || path.includes("#"))
       throw new Error("invalid_couchdb_read_path");
     let response: Response;
     try { response = await fetch(origin + path, { method: "GET", redirect: "error",
-      headers: { Authorization: "Basic " + auth }, signal: AbortSignal.timeout(15000) }); }
+      headers: { Authorization: "Basic " + auth }, signal: AbortSignal.timeout(timeout) }); }
     catch { throw new Error("couchdb_read_failed"); }
     if (!response.ok || !response.body) throw new Error("couchdb_read_failed");
+    return response;
+  };
+}
+export function couchReader(source: Source, service: any, controller: any): GetJSON {
+  const request = couchHTTP(source, service, controller);
+  return async path => {
+    const response = await request(path);
     const stream = response.body.getReader();
     const chunks: Uint8Array[] = [];
     let size = 0;

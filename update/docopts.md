@@ -25,7 +25,8 @@ Inspect the installed platform and compare it with a pinned release.
 Usage:
   update inventory [--namespace=<namespace>] [--instance=<instance>] [--context=<context>] [--json]
   update backup-plan --inventory=<file> [--json]
-  update backup-collect --inventory=<file> --component=<id> --artifacts=<directory> [--json]
+  update backup-collect --inventory=<file> --component=<id> --artifacts=<directory> [--tools=<directory>] [--json]
+  update backup-assemble --inventory=<file> --artifacts=<directory> [--json]
   update backup-verify --inventory=<file> --receipt=<file> --artifacts=<directory> [--json]
   update (--check | --plan) [--manifest=<file> | --index=<source>] [--to=<release>] [--channel=<channel>] [--context=<context>] [--namespace=<namespace>] [--instance=<instance>] [--json]
   update (cli | operator | runtimes | apply | secrets)
@@ -48,6 +49,7 @@ Usage:
   --receipt=<file>        Protected normalized native backup receipt.
   --artifacts=<directory> Private root containing collected artifacts.
   --component=<id>        Explicitly selected native backup component; never collects other components implicitly.
+  --tools=<directory>     Private directory with the pinned Milvus Backup executable; required for milvus-data.
 ```
 
 Use `--option=value` for options with values. Local paths are resolved from
@@ -95,6 +97,14 @@ diagnostics and a partial receipt in a fresh directory beneath a private parent.
 It may create temporary backup files inside the selected service container;
 these are removed on normal shell exit. It never freezes services or restores
 data. Read the supported components and limitations in README before use.
+
+`backup-assemble` requires one successful component collection per expected
+artifact ID, each in its own directory named after that ID. It verifies the
+private files, source identity and complete component/PVC coverage before writing
+a new combined `receipt.json`. It refuses existing combined receipts, failed or
+partial collection records, missing components, links and changed source
+definitions. Assembly does not establish a consistent final migration backup,
+encrypted independent recovery or a working restore.
 
 `cli`, `operator`, `runtimes`, `apply`, and `secrets` retain their existing
 behavior. These commands can change the installation or local configuration;

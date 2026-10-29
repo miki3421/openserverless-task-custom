@@ -22,17 +22,35 @@ import { dirname, join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { reader } from "./inventory";
 import { configFingerprint, scoped, type KubeRead } from "./source";
-import { planBackup, readPrivateJSON, verifyLiveInventory, NATIVE_COLLECTORS, type BackupPlan, type BackupReceipt } from "./backup";
+import { planBackup, readPrivateJSON, verifyLiveInventory, type BackupPlan, type BackupReceipt } from "./backup";
 import type { MigrationInventory } from "./migration";
 import type { ExportFile } from "./bundle";
+import { collectPlatform, collectOpenWhisk } from "./portable";
+import { collectSeaweed, collectMilvus } from "./storage";
 
 export interface NativeJob { pod: string; podUid: string; container: string; file: string;
-  script: string; input: string; validate: "tar" | "redis-rdb" | "redis-acl" }
+  script: string; input: string; validate: "tar" | "redis-rdb" | "redis-acl" | "binary" }
+// File jobs are explicitly enumerated. In particular, Milvus and SeaweedFS
+// must never reach a generic tar of an active database directory.
+const JOB_COLLECTORS = new Set(["postgres-data", "couchdb-data", "mongodb-data", "redis-data", "redis-acl", "etcd-data", "registry-data", "persistent-volume-recovery"]);
+const SAFE_FAILURES = new Set(["native_collection_failed", "native_storage_command_failed", "native_storage_command_reported_error",
+  "native_storage_read_failed", "seaweed_source_changed_during_backup", "invalid_seaweed_binary", "invalid_native_backup_archive",
+  "invalid_redis_acl_backup", "invalid_redis_rdb_backup", "attachment_export_size_mismatch", "couchdb_read_failed",
+  "platform_configuration_changed_during_export", "missing_platform_tls_material", "backup_source_changed", "backup_pod_replaced",
+  "backup_definitions_or_credentials_changed", "source_database_changed_during_read", "missing_milvus_full_native_metadata",
+  "incomplete_milvus_native_metadata_or_rbac", "incomplete_milvus_native_collection_coverage", "incomplete_milvus_native_database_coverage",
+  "milvus_catalog_changed_during_backup", "milvus_catalog_read_failed", "unverified_milvus_object_storage_binding",
+  "unsupported_milvus_storage_configuration", "milvus_tool_checksum_mismatch", "storage_backup_target_changed"]);
+function safeFailure(error: any): string {
+  if (SAFE_FAILURES.has(error?.message)) return error.message;
+  if (["ENOENT", "ENOSPC", "EACCES", "EEXIST"].includes(error?.code)) return "filesystem_" + error.code.toLowerCase();
+  return "native_collection_failed";
+}
 const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
 const temporary = (body: string) => "set -eu; d=$(mktemp -d /tmp/ops-migration.XXXXXXXX); trap 'rm -rf -- \"$d\"' EXIT; " + body;
 export function nativeJobs(plan: BackupPlan, id: string, redisPassword?: string): NativeJob[] {
   const binding = plan.bindings.find(b => b.artifactId === id);
-  if (!binding || !NATIVE_COLLECTORS.has(id) || !binding.targets.length) throw new Error("native_collector_not_supported");
+  if (!binding || !JOB_COLLECTORS.has(id) || !binding.targets.length) throw new Error("native_collector_not_supported");
   if (id === "persistent-volume-recovery" && plan.volumeCoverage.some(p => !p.artifactId))
     throw new Error("incomplete_pvc_recovery_mapping");
   if (plan.collectionBlockers.some(b => b.endsWith(":" + id) ||
@@ -120,7 +138,7 @@ async function inspectArtifact(path: string, validator: NativeJob["validate"]): 
       const prefix = Buffer.alloc(9); readSync(fd, prefix, 0, 9, 0);
       if (!/^REDIS[0-9]{4}$/.test(prefix.toString())) throw new Error("invalid_redis_rdb_backup");
     } finally { closeSync(fd); }
-  } else {
+  } else if (validator === "tar") {
     // Structural archive validation only; native DB validation already ran in the source container.
     const result = Bun.spawnSync(["tar", "-tf", path], { stdout: "ignore", stderr: "pipe", timeout: 120000 });
     if (result.exitCode !== 0) throw new Error("invalid_native_backup_archive");
@@ -131,14 +149,16 @@ async function inspectArtifact(path: string, validator: NativeJob["validate"]): 
 }
 export async function collectNativeComponent(inventory: MigrationInventory, plan: BackupPlan, componentId: string,
     output: string, read: KubeRead, execute: NativeExecutor = kubeNativeExecutor(plan),
-    verifyDefinitions: () => Promise<void> = () => verifyLiveInventory(inventory, read)) {
+    verifyDefinitions: () => Promise<void> = () => verifyLiveInventory(inventory, read), tools?: string) {
   if (plan.inventorySha256 !== inventory.inventorySha256) throw new Error("backup_inventory_mismatch");
   const at = (resource: string) => scoped(read, plan.source.namespace, resource);
   const whisk = at("whisks." + plan.source.apiGroup + "/" + plan.source.instance);
   if (whisk.metadata?.uid !== plan.source.uid || configFingerprint(whisk) !== plan.source.configSha256)
     throw new Error("backup_source_changed");
   await verifyDefinitions();
-  const jobs = nativeJobs(plan, componentId, whisk.spec.redis?.default?.password);
+  const special = ["platform-configuration", "openwhisk-resources", "seaweedfs-data", "milvus-data"].includes(componentId);
+  if (componentId === "milvus-data" && !tools) throw new Error("qualified_milvus_tool_directory_required");
+  const jobs = special ? [] : nativeJobs(plan, componentId, whisk.spec.redis?.default?.password);
   output = resolve(output); privateParent(output); mkdirSync(output, { mode: 0o700 });
   const binding = plan.bindings.find(b => b.artifactId === componentId)!;
   const receipt = { schemaVersion: 1, kind: "ops-native-backup-receipt", inventorySha256: inventory.inventorySha256,
@@ -149,6 +169,10 @@ export async function collectNativeComponent(inventory: MigrationInventory, plan
   save("collection.json", progress);
   const collected: ExportFile[] = [];
   try {
+    if (componentId === "platform-configuration") collected.push(...await collectPlatform(inventory, plan, output, read));
+    if (componentId === "openwhisk-resources") collected.push(...await collectOpenWhisk(inventory, plan, output, read));
+    if (componentId === "seaweedfs-data") collected.push(...await collectSeaweed(plan, output, read, execute));
+    if (componentId === "milvus-data") collected.push(...await collectMilvus(plan, output, read, tools!));
     for (const job of jobs) {
       const current = at("pod/" + job.pod);
       const expected = binding.targets.find(t => t.podUid === job.podUid && t.container === job.container)!;
@@ -185,14 +209,15 @@ export async function collectNativeComponent(inventory: MigrationInventory, plan
     save("collection.json", { ...progress, status: "component-collected-partial-backup", finishedAt: new Date().toISOString(), files: collected.length });
     return { component: componentId, files: collected.length, artifactBytes: collected.reduce((n, f) => n + f.bytes, 0),
       status: "component-collected-partial-backup", backupComplete: false, uninstallAllowed: false };
-  } catch {
-    save("collection.json", { ...progress, status: "failed", finishedAt: new Date().toISOString() });
+  } catch (error) {
+    save("collection.json", { ...progress, status: "failed", failureCode: safeFailure(error), finishedAt: new Date().toISOString() });
     throw new Error("native_collection_failed_private_evidence_retained");
   }
 }
 export async function main(): Promise<void> {
+  process.umask(0o077);
   if (process.argv.includes("--help")) {
-    console.log("Usage: ops update backup-collect --inventory=<file> --component=<id> --artifacts=<fresh-directory> [--json]"); return;
+    console.log("Usage: ops update backup-collect --inventory=<file> --component=<id> --artifacts=<fresh-directory> [--tools=<directory>] [--json]"); return;
   }
   const options = JSON.parse(process.env.OPS_UPDATE_REQUEST || "{}");
   if (typeof options.inventory !== "string" || !options.inventory || typeof options.component !== "string" ||
@@ -202,7 +227,8 @@ export async function main(): Promise<void> {
   const read = reader({ namespace: inventory.source.namespace, instance: inventory.source.instance,
     context: inventory.source.context, root: process.env.OPS_ROOT || resolve(import.meta.dir, "..") });
   const plan = planBackup(inventory, read);
-  const result = await collectNativeComponent(inventory, plan, options.component, resolve(base, options.artifacts), read);
+  const result = await collectNativeComponent(inventory, plan, options.component, resolve(base, options.artifacts), read,
+    undefined, undefined, typeof options.tools === "string" && options.tools ? resolve(base, options.tools) : undefined);
   console.log(options.json === true || options.json === "true" ? JSON.stringify(result, null, 2) :
     `Collected ${result.component}: ${result.files} artifacts. Partial backup; source removal remains blocked.`);
 }

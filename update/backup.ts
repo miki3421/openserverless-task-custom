@@ -20,6 +20,7 @@ import { constants, closeSync, fstatSync, lstatSync, openSync, readFileSync } fr
 import { createReadStream } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
+import { privateJSON } from "./portable";
 import { reader } from "./inventory";
 import { configFingerprint, listItems, scoped, type KubeRead } from "./source";
 import { canonical, hash } from "./releases";
@@ -33,7 +34,7 @@ export const BACKUP_PROCEDURE = {
   operatorTestedRelease: "0.9.0-RC7",
 };
 const DNS = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-export const NATIVE_COLLECTORS = new Set(["postgres-data", "couchdb-data", "redis-data", "redis-acl", "etcd-data", "registry-data", "persistent-volume-recovery"]);
+export const NATIVE_COLLECTORS = new Set(["platform-configuration", "openwhisk-resources", "postgres-data", "couchdb-data", "mongodb-data", "redis-data", "redis-acl", "etcd-data", "seaweedfs-data", "milvus-data", "registry-data", "persistent-volume-recovery"]);
 const METHOD: Record<string, string> = {
   "platform-configuration": "protected-platform-configuration",
   "openwhisk-resources": "all-openwhisk-identities-definitions-and-attachments",
@@ -60,6 +61,7 @@ export interface BackupPlan {
   bindings: BackupBinding[];
   volumeCoverage: { name: string; uid: string; artifactId: string | null }[];
   collectionBlockers: string[]; migrationBlockers: string[];
+  ferretdbBackend?: { verified: true; serviceUid: string; postgresArtifactId: "postgres-data" };
   executionSupported: false; backupComplete: false; restoreVerified: false; uninstallAllowed: false;
 }
 export function validateInventory(inventory: MigrationInventory): void {
@@ -217,15 +219,51 @@ export function planBackup(inventory: MigrationInventory, read: KubeRead): Backu
   if (inventory.volumes.some(p => p.phase !== "Bound")) blockers.add("unbound_persistent_volumes");
   if (inventory.components.includes("mongodb") && !inventory.components.includes("postgres"))
     blockers.add("ferretdb_postgres_backend_not_covered");
-  if (inventory.components.includes("mongodb")) blockers.add("ferretdb_backend_binding_requires_review");
-  if (inventory.components.includes("seaweedfs")) blockers.add("matching_seaweed_binary_not_qualified");
+  let ferretdbBackend: BackupPlan["ferretdbBackend"];
+  if (inventory.components.includes("mongodb")) {
+    const target = bindings.find(b => b.artifactId === "mongodb-data")?.targets[0];
+    const postgres = bindings.find(b => b.artifactId === "postgres-data")?.targets[0];
+    if (target && postgres) {
+      const pod = pods.find(p => p.metadata.uid === target.podUid);
+      const container = pod.spec.containers.find((c: any) => c.name === target.container);
+      const env = (container.env || []).filter((e: any) => e.name === "FERRETDB_POSTGRESQL_URL");
+      let value = env.length === 1 ? env[0].value : undefined;
+      const from = env.length === 1 ? env[0].valueFrom : undefined;
+      if (value === undefined && from) {
+        const cm = from.configMapKeyRef, secret = from.secretKeyRef;
+        if (cm?.name && cm?.key) value = at("configmap/" + cm.name).data?.[cm.key];
+        else if (secret?.name && secret?.key) {
+          const encoded = at("secret/" + secret.name).data?.[secret.key];
+          if (typeof encoded === "string" && /^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) value = Buffer.from(encoded, "base64").toString();
+        }
+      }
+      let url: URL | undefined;
+      try { if (typeof value === "string") url = new URL(value); } catch { /* Unsupported binding remains a blocker. */ }
+      if (url && ["postgres:", "postgresql:"].includes(url.protocol) && (!url.port || url.port === "5432")) {
+        const services = listItems(at("services"));
+        const candidates = services.filter(service => {
+          const name = service.metadata?.name, host = url!.hostname.replace(/\.$/, "");
+          if (service.metadata?.namespace !== s.namespace || !owns(service, s.uid) ||
+              ![name, name + "." + s.namespace, name + "." + s.namespace + ".svc", name + "." + s.namespace + ".svc.cluster.local"].includes(host) ||
+              service.spec?.type === "ExternalName" || service.spec?.externalIPs?.length ||
+              !service.spec?.ports?.some((p: any) => p.port === 5432 && (!p.protocol || p.protocol === "TCP"))) return false;
+          const selector = Object.entries(service.spec.selector || {});
+          if (!selector.length) return false;
+          const selected = pods.filter(p => selector.every(([key, value]) => p.metadata.labels?.[key] === value));
+          return selected.length === 1 && selected[0].metadata.uid === postgres.podUid;
+        });
+        if (candidates.length === 1) ferretdbBackend = { verified: true, serviceUid: candidates[0].metadata.uid, postgresArtifactId: "postgres-data" };
+      }
+    }
+    if (!ferretdbBackend) blockers.add("ferretdb_backend_binding_requires_review:mongodb-data");
+  }
   for (const binding of bindings) if (!NATIVE_COLLECTORS.has(binding.artifactId))
     blockers.add("collector_not_implemented:" + binding.artifactId);
   const after = at("whisks." + s.apiGroup + "/" + s.instance);
   if (after.metadata?.uid !== s.uid || configFingerprint(after) !== s.configSha256) throw new Error("backup_source_changed");
   return { schemaVersion: 1, kind: "ops-native-backup-plan", readOnly: true, inventorySha256: inventory.inventorySha256,
     source: { ...s, clusterUid: cluster.metadata.uid, namespaceUid: namespace.metadata.uid },
-    procedure: { ...BACKUP_PROCEDURE }, architectures, bindings, volumeCoverage,
+    procedure: { ...BACKUP_PROCEDURE }, architectures, bindings, volumeCoverage, ...(ferretdbBackend ? { ferretdbBackend } : {}),
     collectionBlockers: [...blockers].sort(), migrationBlockers: [...new Set([...inventory.blockers,
       "source_and_target_database_versions_require_review", "isolated_restore_not_qualified"])].sort(),
     executionSupported: false, backupComplete: false, restoreVerified: false, uninstallAllowed: false };
@@ -262,7 +300,7 @@ export async function verifyBackupReceipt(receipt: BackupReceipt, plan: BackupPl
     for (const file of component.files) {
       if (!file || typeof file.path !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(file.path) ||
           file.path.split("/").some(p => !p || p === "." || p === "..") || paths.has(file.path) ||
-          !Number.isSafeInteger(file.bytes) || file.bytes <= 0 || !/^[a-f0-9]{64}$/.test(file.sha256))
+          !Number.isSafeInteger(file.bytes) || file.bytes < 0 || !/^[a-f0-9]{64}$/.test(file.sha256))
         throw new Error("invalid_backup_artifact");
       paths.add(file.path);
       const input = await files.open(file.path);
@@ -322,9 +360,38 @@ export function protectedArtifactReader(directory: string): ArtifactReader {
     return { privateRegularFile: true, stream: createReadStream(full, { fd, autoClose: true }) };
   } };
 }
+export async function assembleBackup(inventory: MigrationInventory, plan: BackupPlan, directory: string,
+    verifyDefinitions: () => Promise<void>) {
+  directory = resolve(directory);
+  const reader = protectedArtifactReader(directory);
+  const components: BackupReceipt["components"] = [];
+  for (const id of expectedBackupArtifacts(inventory)) {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new Error("invalid_backup_component_directory");
+    const progress = readPrivateJSON(join(directory, id, "collection.json"));
+    const receipt = readPrivateJSON(join(directory, id, "receipt.json")) as BackupReceipt;
+    if (progress.status !== "component-collected-partial-backup" || progress.componentId !== id ||
+        receipt?.schemaVersion !== 1 || receipt.kind !== "ops-native-backup-receipt" ||
+        receipt.inventorySha256 !== inventory.inventorySha256 || canonical(receipt.source) !== canonical(plan.source) ||
+        canonical(receipt.procedure) !== canonical(BACKUP_PROCEDURE) || receipt.consistency !== "per-component-online" ||
+        receipt.components?.length !== 1 || receipt.components[0].id !== id)
+      throw new Error("invalid_or_failed_partial_backup");
+    const component = receipt.components[0];
+    if (!Array.isArray(component.files) || component.files.some(f => typeof f.path !== "string" ||
+        f.path.startsWith("/") || f.path.split("/").some(p => !p || p === "." || p === "..")))
+      throw new Error("invalid_partial_backup_path");
+    components.push({ ...component, files: component.files.map(f => ({ ...f, path: id + "/" + f.path })) });
+  }
+  const receipt: BackupReceipt = { schemaVersion: 1, kind: "ops-native-backup-receipt", inventorySha256: inventory.inventorySha256,
+    source: plan.source, procedure: plan.procedure, consistency: "per-component-online", components };
+  const integrity = await verifyBackupReceipt(receipt, plan, inventory, reader);
+  await verifyDefinitions();
+  privateJSON(join(directory, "receipt.json"), receipt);
+  return { ...integrity, receipt: "receipt.json" };
+}
 export async function main(): Promise<void> {
   if (process.argv.includes("--help")) {
     console.log("Usage: ops update backup-plan --inventory=<file> [--json]\n" +
+      "       ops update backup-assemble --inventory=<file> --artifacts=<directory> [--json]\n" +
       "       ops update backup-verify --inventory=<file> --receipt=<file> --artifacts=<directory> [--json]"); return;
   }
   const options = JSON.parse(process.env.OPS_UPDATE_REQUEST || "{}");
@@ -337,6 +404,10 @@ export async function main(): Promise<void> {
   await verifyLiveInventory(inventory, read);
   const plan = planBackup(inventory, read);
   let result: any = plan;
+  if (options.assemble === true || options.assemble === "true") {
+    if (typeof options.artifacts !== "string" || !options.artifacts) throw new Error("artifact_directory_required");
+    result = await assembleBackup(inventory, plan, resolve(base, options.artifacts), () => verifyLiveInventory(inventory, read));
+  }
   if (options.verify === true || options.verify === "true") {
     if (typeof options.receipt !== "string" || !options.receipt || typeof options.artifacts !== "string" || !options.artifacts)
       throw new Error("receipt_and_artifact_directory_required");

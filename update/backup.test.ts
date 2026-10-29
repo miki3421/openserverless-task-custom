@@ -21,7 +21,7 @@ import { chmodSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BACKUP_PROCEDURE, expectedBackupArtifacts, planBackup, verifyBackupReceipt, protectedArtifactReader,
-  readPrivateJSON, assertDefinitionCoverage, type BackupReceipt } from "./backup";
+  readPrivateJSON, assertDefinitionCoverage, assembleBackup, type BackupReceipt } from "./backup";
 import { hash, canonical } from "./releases";
 import { configFingerprint } from "./source";
 import type { MigrationInventory } from "./migration";
@@ -71,7 +71,11 @@ function fixture(brand = "nuvolaris") {
   addWorkload("StatefulSet", "seaweedfs", "seaweedfs", "/data");
   addWorkload("StatefulSet", brand + "-mongodb", "ferretdb", "/state");
   addWorkload("StatefulSet", brand + "-etcd", brand + "-etcd", "/bitnami/etcd");
-  addWorkload("Kubegres", brand + "-postgres", "", "/var/lib/postgresql/data");
+  const pg = addWorkload("Kubegres", brand + "-postgres", "", "/var/lib/postgresql/data");
+  pg.metadata.labels = { backend: "postgres" };
+  const ferret = resources.find(r => r.kind === "Pod" && r.metadata.name.startsWith(brand + "-mongodb-"));
+  ferret.spec.containers[0].env = [{ name: "FERRETDB_POSTGRESQL_URL", value: "postgres://fixture:" + CANARY + "@" + brand + "-postgres." + brand + ".svc.cluster.local:5432" }];
+  const service: any = { kind: "Service", metadata: { name: brand + "-postgres", namespace: brand, uid: "postgres-service", ownerReferences: [{ uid: "Kubegres-" + brand + "-postgres" }] }, spec: { type: "ClusterIP", selector: { backend: "postgres" }, ports: [{ port: 5432 }] } };
   addWorkload("Deployment", brand + "-milvus-standalone", "standalone", "/var/lib/milvus");
   addWorkload("StatefulSet", brand + "-operator", brand + "-operator", "/home/legacy/deploy", "");
   addWorkload("StatefulSet", brand + "-static", brand + "-static", "/var/cache/nginx");
@@ -84,13 +88,14 @@ function fixture(brand = "nuvolaris") {
     const resource = args[1];
     if (resource === "namespace/kube-system") return { metadata: { uid: "cluster-uid" } };
     if (resource === "namespace/" + brand) return { metadata: { uid: "namespace-uid" } };
+    if (resource === "services") return { items: [service] };
     if (resource === "nodes") return { items: [{ status: { nodeInfo: { architecture: "amd64" } } }] };
     if (resource === "whisks." + brand + ".org/controller") return whisk;
     if (resource.startsWith("pod/")) return resources.find(r => r.kind === "Pod" && r.metadata.name === resource.slice(4));
     if (resource === "pods,statefulsets,deployments,replicasets,persistentvolumeclaims,kubegres") return { items: resources };
     throw new Error("unexpected_fixture_read");
   };
-  return { inventory: inventory as MigrationInventory, resources, whisk, read, calls, rehash,
+  return { inventory: inventory as MigrationInventory, resources, whisk, service, read, calls, rehash,
     run: () => planBackup(inventory, read) };
 }
 function receiptFixture() {
@@ -316,10 +321,11 @@ test.skipIf(!process.env.OPS_TEST_BINARY)("real CLI discovers backup commands an
     const bin = process.env.OPS_BIN || process.execPath.slice(0, process.execPath.lastIndexOf("/"));
     for (const name of readdirSync(bin)) if (statSync(join(bin, name)).isFile()) copyFileSync(join(bin, name), join(root, name));
     const tasks = join(import.meta.dir, "..");
-    for (const command of ["backup-plan", "backup-collect", "backup-verify"]) {
+    for (const command of ["backup-plan", "backup-collect", "backup-verify", "backup-assemble"]) {
       const args = [process.env.OPS_TEST_BINARY!, "update", command, "--inventory=missing $(touch NEVER_CREATED).json", "--json"];
       if (command === "backup-collect") args.push("--component=redis-acl", "--artifacts=fresh");
       if (command === "backup-verify") args.push("--receipt=receipt.json", "--artifacts=artifacts");
+      if (command === "backup-assemble") args.push("--artifacts=artifacts");
       const result = Bun.spawnSync(args, { cwd: root, timeout: 30000,
         env: { ...process.env, OPS_ROOT: tasks, OPS_PWD: root, OPS_HOME: root, OPS_BIN: root, PATH: root + ":" + process.env.PATH } });
       expect(result.exitCode).not.toBe(0);
@@ -359,4 +365,47 @@ test("definition coverage is verified on both sides of collection; post-capture 
     expect(checks).toBe(2);
     expect(existsSync(join(parent, "artifacts", "receipt.json"))).toBe(false);
   } finally { rmSync(parent, { recursive: true, force: true }); }
+});
+
+test("FerretDB is covered only when its configured endpoint selects the owned PostgreSQL backup target", () => {
+  const f = fixture(); expect(f.run().ferretdbBackend).toEqual({ verified: true, serviceUid: "postgres-service", postgresArtifactId: "postgres-data" });
+  const g = fixture(); g.service.spec.type = "ExternalName";
+  expect(g.run().ferretdbBackend).toBeUndefined();
+  expect(g.run().collectionBlockers).toContain("ferretdb_backend_binding_requires_review:mongodb-data");
+  const h = fixture(); h.service.spec.selector = { backend: "different" };
+  expect(h.run().ferretdbBackend).toBeUndefined();
+  const j = fixture();
+  j.resources.find(r => r.kind === "Pod" && r.metadata.name.startsWith("nuvolaris-mongodb-")).spec.containers[0].env[0].value = "postgres://fixture:private@external.invalid:5432";
+  expect(j.run().ferretdbBackend).toBeUndefined();
+});
+
+test("assembly requires every successful component and verifies all real file bytes before writing a combined receipt", async () => {
+  const f = receiptFixture(), root = mkdtempSync(join(tmpdir(), "ops-backup-assembly-")); chmodSync(root, 0o700);
+  try {
+    for (const component of f.receipt.components) {
+      const dir = join(root, component.id); mkdirSync(dir, { mode: 0o700 });
+      writeFileSync(join(dir, "collection.json"), JSON.stringify({ componentId: component.id, status: "component-collected-partial-backup" }), { mode: 0o600 });
+      writeFileSync(join(dir, "receipt.json"), JSON.stringify({ ...f.receipt, components: [component] }), { mode: 0o600 });
+      writeFileSync(join(dir, component.files[0].path), "synthetic backup bytes", { mode: 0o600 });
+    }
+    let verified = false;
+    const result = await assembleBackup(f.inventory, f.plan, root, async () => { verified = true; });
+    expect(verified).toBe(true); expect(result.components).toBe(12); expect(result.backupComplete).toBe(false);
+    const assembled = readPrivateJSON(join(root, "receipt.json"));
+    expect(assembled.components[0].files[0].path).toStartWith(assembled.components[0].id + "/");
+    expect((await verifyBackupReceipt(assembled, f.plan, f.inventory, protectedArtifactReader(root))).artifactIntegrityVerified).toBe(true);
+    await expect(assembleBackup(f.inventory, f.plan, root, async () => {})).rejects.toThrow();
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+test("missing or failed components cannot be assembled into a successful whole backup", async () => {
+  const f = receiptFixture(), root = mkdtempSync(join(tmpdir(), "ops-backup-incomplete-")); chmodSync(root, 0o700);
+  try {
+    await expect(assembleBackup(f.inventory, f.plan, root, async () => {})).rejects.toThrow();
+    expect(existsSync(join(root, "receipt.json"))).toBe(false);
+    const id = f.receipt.components[0].id, dir = join(root, id); mkdirSync(dir, { mode: 0o700 });
+    writeFileSync(join(dir, "collection.json"), JSON.stringify({ componentId: id, status: "failed" }), { mode: 0o600 });
+    writeFileSync(join(dir, "receipt.json"), JSON.stringify({ ...f.receipt, components: [f.receipt.components[0]] }), { mode: 0o600 });
+    await expect(assembleBackup(f.inventory, f.plan, root, async () => {})).rejects.toThrow("invalid_or_failed_partial_backup");
+    expect(existsSync(join(root, "receipt.json"))).toBe(false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

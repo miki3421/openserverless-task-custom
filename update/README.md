@@ -132,15 +132,48 @@ application. Missing collectors and qualification steps remain explicit.
 ops update backup-collect --inventory=/private/path/inventory.json --component=redis-acl --artifacts=/private/path/redis-acl-run --json
 ```
 
-Implemented collectors are `postgres-data`, `couchdb-data`, `redis-data`,
-`redis-acl`, `etcd-data`, `registry-data` and `persistent-volume-recovery`:
+Implemented collectors cover every standard artifact group: `platform-configuration`,
+`openwhisk-resources`, `postgres-data`, `couchdb-data`, `mongodb-data`,
+`redis-data`, `redis-acl`, `etcd-data`, `seaweedfs-data`, `milvus-data`,
+`registry-data` and `persistent-volume-recovery`:
 
+* Platform export preserves the source Whisk/WhiskUsers, namespaced configuration,
+  Secrets and certificates, desired workloads, routes, services, PVC definitions,
+  service accounts, RBAC, NetworkPolicies and source CRD schemas in a private JSON
+  artifact. It checks source identity, referenced TLS material and stable configuration.
+  The artifact is evidence for explicit conversion, never a manifest to apply wholesale.
+* OpenWhisk export streams every subject and entity with keyset pagination into
+  private NDJSON. It preserves raw identity keys, code, parameters, revision IDs and
+  binary attachments. Attachments use a revision-specific authenticated GET, opaque
+  local filenames, exact length and SHA-256 checks. All namespaces are included;
+  additional CouchDB databases remain the responsibility of `couchdb-data`.
 * PostgreSQL uses `pg_basebackup` with streamed WAL and `pg_verifybackup`.
 * CouchDB copies every append-only `.couch` file, bounded to its open descriptor's
   initial length. Code attachments and extra databases remain in this physical
   backup; transformation and logical restore acceptance are separate work.
+* FerretDB state is collected only when the configured PostgreSQL URL resolves to
+  an owned service selecting the exact PostgreSQL backup pod. Literal, ConfigMap
+  and Secret references are handled privately. The PostgreSQL artifact is also
+  mandatory; a state file by itself cannot satisfy full backup verification.
 * Redis uses replication RDB plus native validation; ACLs are collected separately.
 * Application etcd uses native snapshot/status and retains its restore utility.
+* SeaweedFS captures the matching `weed` executable from its existing pod and
+  checks the binary architecture. It exports native filer metadata and every volume,
+  comparing the complete paged filer tree and volume identities before/after.
+  It rejects native error messages even if a command exits zero. An architecture
+  matching Linux runner and the standard single-pod layout are required.
+* Milvus uses the official, checksum-pinned **Milvus Backup 0.6.1** Linux AMD64
+  executable. `--tools=<private-directory>` must contain `milvus-backup` with the
+  exact binary SHA-256 in `storage.ts`. The pinned release archive and its SHA-256
+  are recorded there too; downloading/installing tools is not implicit.
+  The collector derives root and S3 credentials from the owned, mounted Milvus
+  configuration and verifies that the services select the inventoried pods.
+  It requests all collections with `--rbac`, `--format=binlog` and serial flush,
+  writing the complete native backup to a private **local** directory. No backup
+  bucket is created. It checks all database/collection metadata, including empty
+  databases, RBAC presence and unchanged catalogs. Native flush and a temporary GC
+  pause are part of this backup operation. Restore and index rebuilding remain
+  separate acceptance steps. Custom endpoints/config overrides need qualification.
 * File collectors cover known static/operator/Tika volumes and registry blobs,
   resolving actual mounts and excluding active registry uploads. They emit a PVC
   recovery map; database data must come from the independent native collectors.
@@ -155,14 +188,26 @@ Collection stops at the first error without retry and retains private diagnostic
 A fresh definition scan runs before and after collection. Existing output
 directories are refused; files use mode 0600 beneath mode 0700 directories.
 Each run emits only a **partial receipt** and cannot pass whole-backup verification.
+Use a separate directory named exactly after each artifact ID below one private
+parent. After every expected component has succeeded, assemble their receipts:
+
+```sh
+ops update backup-assemble --inventory=/private/path/inventory.json --artifacts=/private/path/artifacts --json
+```
+
+Assembly reads `<artifact-id>/collection.json` and `<artifact-id>/receipt.json`,
+rejects missing/failed/mixed-source collections, prefixes their artifact paths,
+streams all file hashes and rechecks source definitions before writing a new
+combined `receipt.json`. Existing combined receipts are refused. This establishes
+artifact integrity and declared scope; it still does not certify a globally
+consistent final migration backup or a restored application.
 These artifacts are private plaintext; encrypted packaging and independently
 recoverable storage/keys must be supplied before a final migration backup.
 
 Physical database backups require compatible restore versions. They do not
-implement Nuvolaris-to-OpenServerless resource conversion. SeaweedFS matching
-binary qualification, populated Milvus native backup, FerretDB backend binding,
-complete protected platform/OpenWhisk exports and source quiescence still block
-migration. The RC7 recovery guest is ARM64-specific; AMD64 restore and Kind
+implement Nuvolaris-to-OpenServerless resource conversion. Every collector must pass on the selected installation before its artifacts can
+be accepted. Source quiescence, compatible database restore versions and semantic
+recovery remain required after collection; tool compatibility is not a restore test. The RC7 recovery guest is ARM64-specific; AMD64 restore and Kind
 control-plane recovery remain unqualified. Restoring the original K3s datastore
 and binary is recovery of the original installation, not a target-release install.
 
