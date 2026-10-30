@@ -19,6 +19,29 @@ import { isAbsolute } from "node:path";
 import { isIP } from "node:net";
 import { createHash } from "node:crypto";
 
+// A combined storage process can expose its volume HTTP endpoint before its
+// filer RPC endpoint is ready. The caller supplies bounded, read-only probes.
+export async function waitStorageEndpoints(
+  address: string, ports: number[], probe: (address: string, port: number) => Promise<boolean>,
+  options: { timeoutMs?: number; now?: () => number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<void> {
+  if (!isIP(address) || !Array.isArray(ports) || !ports.length || ports.length > 32 ||
+      new Set(ports).size !== ports.length || ports.some(p => !Number.isInteger(p) || p < 1 || p > 65535))
+    throw new Error("invalid_storage_readiness_endpoint");
+  const timeout = options.timeoutMs ?? 180000;
+  if (!Number.isFinite(timeout) || timeout <= 0 || timeout > 600000) throw new Error("invalid_storage_readiness_timeout");
+  const now = options.now ?? Date.now, sleep = options.sleep ?? (ms => new Promise(resolve => setTimeout(resolve, ms)));
+  const deadline = now() + timeout;
+  while (now() < deadline) {
+    let ready = true;
+    for (const port of ports) if (!(await probe(address, port))) ready = false;
+    if (ready) return;
+    const remaining = deadline - now();
+    if (remaining > 0) await sleep(Math.min(1000, remaining));
+  }
+  throw new Error("storage_readiness_timeout");
+}
+
 export async function qualifyRunningOCIImage(
   expected: { rootDigest: string; platform: string; cachedRootDigest: string; reportedImageId: string },
   load: (digest: string) => Promise<Uint8Array>,

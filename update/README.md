@@ -165,6 +165,13 @@ manifest and configuration, verifies the cache root and platform, and accepts
 only running IDs belonging to that verified chain. Guest validation of this
 normalization remains separate from synthetic author tests.
 
+For a combined SeaweedFS server, volume HTTP readiness alone does not establish
+filer RPC readiness. Before loading metadata, wait for every required native
+endpoint with a bounded read-only probe. A failed load must retain its diagnostics;
+inspect the existing filer tree before resuming against already-copied volumes.
+The native-tool log guard also rejects prompt-prefixed errors such as `.error:`,
+even when the process exits with status zero.
+
 ## Native backup adapters
 
 The pinned procedure reference is

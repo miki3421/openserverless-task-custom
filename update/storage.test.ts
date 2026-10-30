@@ -122,6 +122,8 @@ test("native command errors are rejected even when a tool returns zero", async (
     await expect(runPrivate("/bin/sh", ["-c", "printf 'Error synchronizing volume\\n'"], root, "native"))
       .rejects.toThrow("command_reported_error");
     expect(statSync(join(root, "native.stdout")).mode & 0o777).toBe(0o600);
+    await expect(runPrivate("/bin/sh", ["-c", "printf '> .error: CreateEntry RPC unavailable\\n' >&2"], root, "prompt-error"))
+      .rejects.toThrow("command_reported_error");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 test("Milvus tool must match the pinned executable hash and private directory", async () => {

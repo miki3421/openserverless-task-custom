@@ -16,13 +16,26 @@
 // under the License.
 
 import { expect, test } from "bun:test";
-import { deduplicateRecoveryObjects, platformImageImportArgs, qualifyRunningOCIImage, waitRegisteredNode } from "./offline";
+import { deduplicateRecoveryObjects, platformImageImportArgs, qualifyRunningOCIImage, waitRegisteredNode, waitStorageEndpoints } from "./offline";
 import { createHash } from "node:crypto";
 
 const identity = { name: "isolated-recovery", ip: "192.0.2.10" };
 const node = () => ({ kind: "Node", metadata: { name: identity.name, uid: "guest-node" },
   status: { addresses: [{ type: "InternalIP", address: identity.ip }] } });
 function clock() { let t=0; return { timeoutMs: 2500, now: () => t, sleep: async (ms: number) => { t+=ms; } }; }
+
+test("volume HTTP readiness does not bypass a filer RPC startup delay",async()=>{
+  const time=clock(),calls:number[]=[];
+  await waitStorageEndpoints("192.0.2.10",[8080,9090,19090],async(_,port)=>{
+    calls.push(port);return port!==19090 || time.now()>=2000;
+  },time);
+  expect(time.now()).toBe(2000);expect(calls.filter(p=>p===19090)).toHaveLength(3);
+});
+test("storage readiness is bounded and does not swallow unexpected probe errors",async()=>{
+  await expect(waitStorageEndpoints("192.0.2.10",[19090],async()=>false,clock())).rejects.toThrow("storage_readiness_timeout");
+  await expect(waitStorageEndpoints("192.0.2.10",[19090],async()=>{throw new Error("probe_guard_failed");},clock())).rejects.toThrow("probe_guard_failed");
+  await expect(waitStorageEndpoints("outside.example",[19090],async()=>true,clock())).rejects.toThrow("invalid_storage_readiness_endpoint");
+});
 
 function ociFixture() {
   const blobs=new Map<string,Uint8Array>();

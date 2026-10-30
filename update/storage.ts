@@ -68,7 +68,7 @@ async function logHasError(path: string): Promise<boolean> {
   let tail = "";
   for await (const block of createReadStream(path)) {
     const text = tail + block.toString();
-    if (/^(?:Error[ :]|error:|E[0-9]{4})/m.test(text)) return true;
+    if (/^[ \t>.]*(?:Error[ :]|error:|E[0-9]{4})/m.test(text)) return true;
     tail = text.slice(-8192);
   }
   return false;
