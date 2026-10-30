@@ -90,6 +90,18 @@ Current phase status:
 * Complete backup orchestration, encryption/independent storage and target restore: not implemented.
 * Quiescence, restore verification, cluster removal/recreation and cutover: not implemented.
 
+The personal migration qualification branch pairs its installation schema with
+the matching operator candidate. A restored Milvus deployment can declare
+`milvus.etcd.root-path`, `milvus.etcd.username` and `milvus.storage.root-path`
+to retain the metadata and object prefixes selected by native recovery.
+Existing installations keep the `milvus`, `etcdmilvus` and `files` defaults.
+`redis.acl-persistence-enabled: true` uses a prepared
+`/bitnami/redis/data/users.acl` on a persistent Redis volume. The recovery adapter
+must populate that file before deployment; named identities then use the
+operator's existing ACL persistence path. These options are prerequisites for
+the isolated qualification procedure; destructive cutover retains the export,
+quiescence and restore-acceptance gates described below.
+
 `backupComplete` and `uninstallAllowed` remain false. No existing mutating
 `ops update apply` task consumes these reports. Existing `--check`/`--plan`
 commands remain the 0.9.0 release comparison workflow; inventory is the first

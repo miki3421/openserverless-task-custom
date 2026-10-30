@@ -377,6 +377,9 @@ spec:
                     persistence-enabled:
                       description: specify whether to enable or not REDIS persistence. Default to false
                       type: boolean
+                    acl-persistence-enabled:
+                      description: Use a prepared users.acl file on the persistent volume and preserve named identities across restarts.
+                      type: boolean
                     volume-size:
                       description: redis volume size in GB to be assigned if persistence is enabled
                       type: integer
@@ -682,6 +685,23 @@ spec:
                   description: used to configure a openserverless shared MILVUS instance
                   type: object
                   properties:
+                    etcd:
+                      description: Preserve a restored metadata prefix and its scoped service identity.
+                      type: object
+                      properties:
+                        root-path:
+                          type: string
+                          pattern: '^[A-Za-z0-9_-]{1,128}$'
+                        username:
+                          type: string
+                          pattern: '^[A-Za-z0-9_-]{1,64}$'
+                    storage:
+                      description: Preserve the object storage prefix selected by native restore.
+                      type: object
+                      properties:
+                        root-path:
+                          type: string
+                          pattern: '^[A-Za-z0-9_-]{1,128}$'
                     volume-size:
                       description: ETCD data volume size in GB for the internal PULSAR instances
                       type: object
