@@ -182,10 +182,19 @@ selected files are absent, all common entries match, and the directory already
 has the saved attributes. This preserves the original backup and avoids replaying
 all metadata. Native completion counts alone do not establish recovery; full
 metadata and file-content verification remain required. The targeted workaround
-is locally qualified and awaits guest verification.
+was verified in an isolated Linux AMD64 guest: all 386 metadata entries and 161
+files matched the saved metadata and sizes, with 160 MD5 comparisons. The remaining
+inline IAM content was also compared byte-for-byte during S3 qualification.
 For a fresh full load, the helper keeps the complete source byte stream and
 appends a saved directory frame when the stream would otherwise end in a file.
-Both forms leave the original artifact unchanged and require isolated acceptance.
+Both forms leave the original artifact unchanged. A fresh full load still requires
+its own guest qualification; targeted recovery does not certify that path.
+
+Legacy IAM is a separate migration acceptance criterion. Restoring identical IAM
+bytes can preserve a global anonymous `Read` rule. A successful bucket HEAD is
+then insufficient to prove tenant authentication or private-object isolation.
+Record the inherited policy and separately qualify the target's intended public
+and private access using operations that exercise authorization.
 
 ## Native backup adapters
 
