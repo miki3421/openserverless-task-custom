@@ -142,6 +142,15 @@ coordinated write freeze, scheduler stop, invocation drain and fresh collection
 are required before destructive migration. `backupComplete` and
 `uninstallAllowed` stay false after encryption or unpacking.
 
+The isolated recovery qualification uses `offline.ts` to select an explicit
+platform when importing cached OCI images into containerd's `k8s.io` namespace.
+A platform-filtered export can retain index entries for other architectures;
+unqualified automatic import may attempt to load absent manifests. Verify that
+all required image references and digests are registered before waiting for
+workloads. Wait for the expected node to exist with the guest's InternalIP before
+checking readiness; `kubectl wait` alone fails immediately if the node has not
+registered yet. These helpers do not authorize a guest or prove database recovery.
+
 ## Native backup adapters
 
 The pinned procedure reference is
