@@ -113,7 +113,11 @@ receipt coverage and all artifact hashes without contacting Kubernetes. It
 copies only receipt-declared files into a fresh private portable payload with
 inventory/plan/receipt metadata. Temporary logs and failed captures are excluded.
 Restic encrypts a single portable tar, checks all repository data and restores
-that tar to fresh staging for a full byte/hash comparison. The archive directory
+that tar to fresh staging for a full byte/hash comparison. Recovery streams the
+tar contents into a new mode0600 file owned by the recovery user, so a backup
+created under a different numeric UID remains portable. The protected extractor
+still requires current-user ownership. Ownership metadata inside native database
+archives remains unchanged. The archive directory
 contains the encrypted repository and a credential-free `archive.json` selecting
 the exact snapshot and tar/config hashes. Plaintext payload/work logs stay in
 the separate private workspace; they are not the independent recovery copy.

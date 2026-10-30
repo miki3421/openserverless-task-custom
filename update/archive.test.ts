@@ -17,7 +17,7 @@
 
 
 import { test, expect } from "bun:test";
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, statSync, copyFileSync } from "node:fs";
+import { chmodSync, chownSync, cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, statSync, copyFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { packArchive, unpackArchive, validateOfflinePlan, verifyPayload, qualifyRestic, validateArchiveRecord } from "./archive";
@@ -83,6 +83,33 @@ test.skipIf(!process.env.OPS_TEST_RESTIC_TOOLS)("real Restic encrypts, round-tri
   const record=JSON.parse(readFileSync(join(copy,"archive.json"),"utf8"));record.tarSha256="d".repeat(64);
   writeFileSync(join(copy,"archive.json"),JSON.stringify(record),{mode:0o600});
   await expect(unpackArchive({archive:copy,workspace:join(f.root,"tampered-work"),password:f.password,tools:f.options.tools})).rejects.toThrow("restore_checksum_mismatch");
+ }finally{rmSync(f.root,{recursive:true,force:true});}
+},60000);
+test.skipIf(!process.env.OPS_TEST_RESTIC_TOOLS || process.getuid?.() !== 0)("recovery across numeric UIDs retains strict private ownership checks",async()=>{
+ const f=fixture();try{
+  const record=await packArchive(f.options);
+  const tool=join(f.root,"restic");copyFileSync(join(f.options.tools,"restic"),tool);chmodSync(tool,0o700);
+  const own=(path:string,uid:number)=>{if(statSync(path).isDirectory())for(const name of readdirSync(path))own(join(path,name),uid);chownSync(path,uid,uid);};
+  own(f.root,1000);
+  const foreign=`import os,subprocess,sys\nos.setgroups([]);os.setgid(1000);os.setuid(1000)\nwith open(sys.argv[4],'rb') as data:\n p=subprocess.run([sys.argv[1],'--repo='+sys.argv[2],'--password-file='+sys.argv[3],'--no-cache','backup','--stdin','--stdin-filename=ops-migration.tar','--json'],stdin=data,capture_output=True)\n sys.stdout.buffer.write(p.stdout);sys.stderr.buffer.write(p.stderr);sys.exit(p.returncode)\n`;
+  const p=Bun.spawnSync(["python3","-c",foreign,tool,join(f.options.archive,"repository"),f.password,join(f.options.workspace,"ops-migration.tar")],{stdout:"pipe",stderr:"pipe",timeout:60000});
+  own(f.root,0);expect(p.exitCode).toBe(0);
+  const summary=p.stdout.toString().split("\n").filter(Boolean).map(line=>JSON.parse(line)).find(row=>row.message_type==="summary");
+  const updated={...record,snapshot:summary.snapshot_id};
+  writeFileSync(join(f.options.archive,"archive.json"),JSON.stringify(updated),{mode:0o600});
+  const legacy=join(f.root,"metadata-restore");mkdirSync(legacy,{mode:0o700});
+  const previous=Bun.spawnSync([tool,"--repo="+join(f.options.archive,"repository"),"--password-file="+f.password,"--no-cache","restore",summary.snapshot_id,"--target="+legacy],{stdout:"pipe",stderr:"pipe",timeout:60000});
+  expect(previous.exitCode).toBe(0);const foreignTar=join(legacy,"ops-migration.tar");
+  expect(statSync(foreignTar).uid).toBe(1000);
+  const rejected=Bun.spawnSync(["python3",join(import.meta.dir,"archive_extract.py"),foreignTar,join(f.root,"rejected")],{stdout:"pipe",stderr:"pipe"});
+  expect(rejected.exitCode).not.toBe(0);expect(existsSync(join(f.root,"rejected"))).toBe(false);
+  const workspace=join(f.root,"portable-recovery");
+  const result=await unpackArchive({archive:f.options.archive,workspace,password:f.password,tools:f.options.tools});
+  expect(result.archiveRestoredAndVerified).toBe(true);
+  for(const path of [join(workspace,"restored/ops-migration.tar"),join(workspace,"payload/artifacts/config.json")]){
+   expect(statSync(path).uid).toBe(0);expect(statSync(path).mode&0o777).toBe(0o600);
+  }
+  expect(readFileSync(join(workspace,"payload/artifacts/config.json"),"utf8")).toContain(CANARY);
  }finally{rmSync(f.root,{recursive:true,force:true});}
 },60000);
 test("unqualified archive tools and malformed archive records fail closed",async()=>{

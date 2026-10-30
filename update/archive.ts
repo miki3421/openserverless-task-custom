@@ -102,12 +102,12 @@ export async function verifyPayload(root: string, record?: ArchiveRecord) {
   return { ...result, inventorySha256: inventory.inventorySha256,
     receiptSha256: (await artifactInfo(root, join(root, "receipt.json"))).sha256 };
 }
-export type ResticRunner = (label: string, args: string[], inputPath?: string) => Promise<string>;
+export type ResticRunner = (label: string, args: string[], inputPath?: string, outputPath?: string) => Promise<string>;
 export function resticRunner(tool: string, repository: string, key: string, workspace: string): ResticRunner {
   mkdirSync(join(workspace, "cache"), { mode: 0o700 });
-  return async (label, args, inputPath) => {
-    const outPath = join(workspace, label + ".stdout"), errorPath = join(workspace, label + ".stderr");
-    const out = openSync(outPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, 0o600);
+  return async (label, args, inputPath, outputPath) => {
+    const outPath = outputPath || join(workspace, label + ".stdout"), errorPath = join(workspace, label + ".stderr");
+    const out = openSync(outPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
     let err: number | undefined, input: number | undefined;
     try {
       err = openSync(errorPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, 0o600);
@@ -117,6 +117,7 @@ export function resticRunner(tool: string, repository: string, key: string, work
         { cwd: workspace, env, stdin: input === undefined ? "ignore" : input, stdout: out, stderr: err, timeout: 1200000 });
       if (await child.exited !== 0) throw new Error("restic_operation_failed");
     } finally { closeSync(out); if (err !== undefined) closeSync(err); if (input !== undefined) closeSync(input); }
+    if (outputPath) { privateFile(outPath); return ""; }
     if (lstatSync(outPath).size > 32 * 1024 * 1024) throw new Error("restic_output_exceeds_limit");
     return readFileSync(outPath, "utf8");
   };
@@ -164,10 +165,9 @@ export async function packArchive(options: { inventory: string; plan: string; ar
   if (!HEX.test(summary?.snapshot_id||"")) throw new Error("invalid_restic_snapshot_result");
   await run("check",["check","--read-data"]);
   const restored = join(workspace,"self-check"); mkdirSync(restored,{mode:0o700});
-  await run("restore",["restore",summary.snapshot_id,"--target="+restored]);
   const restoredTar=join(restored,"ops-migration.tar");
-  const st=lstatSync(restoredTar); if (!st.isFile()||st.isSymbolicLink()||st.nlink!==1) throw new Error("unsafe_restic_restore_file");
-  chmodSync(restoredTar,0o600);
+  // Dump only the file bytes: restoring snapshot metadata would retain the source UID.
+  await run("restore",["dump",summary.snapshot_id,"/ops-migration.tar"],undefined,restoredTar);
   const restoredInfo=await artifactInfo(restored,restoredTar);
   if (restoredInfo.sha256!==tarInfo.sha256||restoredInfo.bytes!==tarInfo.bytes) throw new Error("archive_restore_checksum_mismatch");
   const record: ArchiveRecord = { schemaVersion:1,kind:"ops-native-backup-archive",snapshot:summary.snapshot_id,
@@ -197,9 +197,8 @@ export async function unpackArchive(options:{archive:string;workspace:string;pas
   const workspace=freshPrivateDirectory(options.workspace),run=resticRunner(tool,repository,options.password,workspace);
   await run("check",["check","--read-data"]);
   const restored=join(workspace,"restored");mkdirSync(restored,{mode:0o700});
-  await run("restore",["restore",record.snapshot,"--target="+restored]);
-  const tar=join(restored,"ops-migration.tar"),st=lstatSync(tar);
-  if(!st.isFile()||st.isSymbolicLink()||st.nlink!==1)throw new Error("unsafe_restic_restore_file");chmodSync(tar,0o600);
+  const tar=join(restored,"ops-migration.tar");
+  await run("restore",["dump",record.snapshot,"/ops-migration.tar"],undefined,tar);
   const info=await artifactInfo(restored,tar);
   if(info.sha256!==record.tarSha256||info.bytes!==record.tarBytes)throw new Error("archive_restore_checksum_mismatch");
   const out=openSync(join(workspace,"extract.stdout"),constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY,0o600);
