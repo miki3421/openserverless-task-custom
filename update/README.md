@@ -151,6 +151,20 @@ workloads. Wait for the expected node to exist with the guest's InternalIP befor
 checking readiness; `kubectl wait` alone fails immediately if the node has not
 registered yet. These helpers do not authorize a guest or prove database recovery.
 
+Validate recovery object identities before any API write. The helper deduplicates
+identical objects referenced more than once, such as a Secret containing both a
+database username and password; conflicting definitions fail before submission.
+Kubernetes List creation can partially succeed. After a failed creation, inspect
+and validate the existing objects and saved manifest before resuming verification;
+do not blindly replay creation or overwrite recovered volumes.
+
+CRI running-image IDs may identify an index after a pull, or an image configuration
+after a local import. Never compare these strings as interchangeable digests.
+The qualification helper hashes the pinned root descriptor, selected platform
+manifest and configuration, verifies the cache root and platform, and accepts
+only running IDs belonging to that verified chain. Guest validation of this
+normalization remains separate from synthetic author tests.
+
 ## Native backup adapters
 
 The pinned procedure reference is

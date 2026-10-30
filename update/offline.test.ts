@@ -16,12 +16,65 @@
 // under the License.
 
 import { expect, test } from "bun:test";
-import { platformImageImportArgs, waitRegisteredNode } from "./offline";
+import { deduplicateRecoveryObjects, platformImageImportArgs, qualifyRunningOCIImage, waitRegisteredNode } from "./offline";
+import { createHash } from "node:crypto";
 
 const identity = { name: "isolated-recovery", ip: "192.0.2.10" };
 const node = () => ({ kind: "Node", metadata: { name: identity.name, uid: "guest-node" },
   status: { addresses: [{ type: "InternalIP", address: identity.ip }] } });
 function clock() { let t=0; return { timeoutMs: 2500, now: () => t, sleep: async (ms: number) => { t+=ms; } }; }
+
+function ociFixture() {
+  const blobs=new Map<string,Uint8Array>();
+  const add=(v:any)=>{const bytes=Buffer.from(JSON.stringify(v));const digest="sha256:"+createHash("sha256").update(bytes).digest("hex");blobs.set(digest,bytes);return digest;};
+  const config=add({os:"linux",architecture:"amd64",rootfs:{type:"layers",diff_ids:[]}});
+  const manifest=add({schemaVersion:2,config:{digest:config},layers:[]});
+  const root=add({schemaVersion:2,manifests:[{digest:manifest,platform:{os:"linux",architecture:"amd64"}},{digest:"sha256:"+"a".repeat(64),platform:{os:"linux",architecture:"arm64"}}]});
+  return {add,blobs,config,manifest,root,load:async(d:string)=>{const value=blobs.get(d);if(!value)throw new Error("missing_blob");return value;},
+    expected:{rootDigest:root,cachedRootDigest:root,platform:"linux/amd64",reportedImageId:config}};
+}
+test("pulled index IDs and offline-imported configuration IDs prove the same pinned image",async()=>{
+  const f=ociFixture();
+  for(const reportedImageId of [f.config,f.manifest,"docker-pullable://registry.example/image@"+f.root]) {
+    const result=await qualifyRunningOCIImage({...f.expected,reportedImageId},f.load);
+    expect(result.descriptorChainVerified).toBe(true);expect(result.configDigest).toBe(f.config);expect(result.manifestDigest).toBe(f.manifest);
+  }
+  expect((await qualifyRunningOCIImage(f.expected,f.load)).reportedDigestType).toBe("image-config");
+});
+test("image identity rejects foreign running IDs, substituted cache roots and changed metadata",async()=>{
+  const f=ociFixture();
+  await expect(qualifyRunningOCIImage({...f.expected,reportedImageId:"sha256:"+"b".repeat(64)},f.load)).rejects.toThrow("running_oci_image_identity_mismatch");
+  await expect(qualifyRunningOCIImage({...f.expected,cachedRootDigest:"sha256:"+"c".repeat(64)},f.load)).rejects.toThrow("source_or_cache_identity_mismatch");
+  f.blobs.set(f.config,Buffer.from('{}'));
+  await expect(qualifyRunningOCIImage(f.expected,f.load)).rejects.toThrow("descriptor_checksum_mismatch");
+});
+test("image qualification rejects ambiguous platforms and supports a pinned single-platform manifest",async()=>{
+  const f=ociFixture();
+  const root=f.add({schemaVersion:2,manifests:[{digest:f.manifest,platform:{os:"linux",architecture:"amd64"}},{digest:f.manifest,platform:{os:"linux",architecture:"amd64"}}]});
+  await expect(qualifyRunningOCIImage({...f.expected,rootDigest:root,cachedRootDigest:root},f.load)).rejects.toThrow("ambiguous_or_missing");
+  expect((await qualifyRunningOCIImage({...f.expected,rootDigest:f.manifest,cachedRootDigest:f.manifest},f.load)).descriptorChainVerified).toBe(true);
+  await expect(qualifyRunningOCIImage({...f.expected,platform:"linux/arm64"},f.load)).rejects.toThrow();
+});
+
+test("shared credential references produce one Secret before Kubernetes List creation", () => {
+  const secret={apiVersion:"v1",kind:"Secret",metadata:{name:"database-auth",namespace:"recovery"},type:"Opaque",data:{user:"dXNlcg==",password:"c2VjcmV0"}};
+  const duplicate={data:{password:"c2VjcmV0",user:"dXNlcg=="},type:"Opaque",metadata:{namespace:"recovery",name:"database-auth"},kind:"Secret",apiVersion:"v1"};
+  const pod={apiVersion:"v1",kind:"Pod",metadata:{name:"database-0",namespace:"recovery"},spec:{containers:[]}};
+  const result=deduplicateRecoveryObjects([secret,duplicate,pod]);
+  expect(result).toEqual([secret,pod]);expect(result[0]).toBe(secret);
+  expect(Object.keys(secret.data)).toEqual(["user","password"]);
+});
+test("conflicting duplicate definitions are rejected without including secret values in errors", () => {
+  const secret={apiVersion:"v1",kind:"Secret",metadata:{name:"database-auth",namespace:"recovery"},data:{password:"PRIVATE_CANARY"}};
+  expect(()=>deduplicateRecoveryObjects([secret,{...secret,data:{password:"DIFFERENT_CANARY"}}])).toThrow("conflicting_recovery_object");
+  try { deduplicateRecoveryObjects([secret,{...secret,data:{}}]); } catch(error) { expect(String(error)).not.toContain("PRIVATE_CANARY"); }
+});
+test("recovery object identity spans versions within a group and separates namespaces", () => {
+  const role={apiVersion:"rbac.authorization.k8s.io/v1",kind:"Role",metadata:{name:"same",namespace:"one"},rules:[]};
+  expect(()=>deduplicateRecoveryObjects([role,{...role,apiVersion:"rbac.authorization.k8s.io/v1beta1"}])).toThrow("conflicting_recovery_object");
+  expect(deduplicateRecoveryObjects([role,{...role,metadata:{name:"same",namespace:"two"}}])).toHaveLength(2);
+  expect(()=>deduplicateRecoveryObjects([{apiVersion:"v1",kind:"Secret",metadata:{}}])).toThrow("identity");
+});
 
 test("offline import selects an explicit platform and Kubernetes containerd namespace", () => {
   const args=platformImageImportArgs("/private/images with spaces.tar", "linux/amd64");

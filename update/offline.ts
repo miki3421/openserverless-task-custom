@@ -17,6 +17,67 @@
 
 import { isAbsolute } from "node:path";
 import { isIP } from "node:net";
+import { createHash } from "node:crypto";
+
+export async function qualifyRunningOCIImage(
+  expected: { rootDigest: string; platform: string; cachedRootDigest: string; reportedImageId: string },
+  load: (digest: string) => Promise<Uint8Array>,
+) {
+  const valid = (d: unknown): d is string => typeof d === "string" && /^sha256:[a-f0-9]{64}$/.test(d);
+  if (!valid(expected.rootDigest) || expected.cachedRootDigest !== expected.rootDigest ||
+      !["linux/amd64", "linux/arm64"].includes(expected.platform)) throw new Error("oci_source_or_cache_identity_mismatch");
+  const read = async (digest: string) => {
+    if (!valid(digest)) throw new Error("invalid_oci_descriptor");
+    const bytes = await load(digest);
+    if (bytes.length > 4 * 1024 * 1024 || "sha256:" + createHash("sha256").update(bytes).digest("hex") !== digest)
+      throw new Error("oci_descriptor_checksum_mismatch");
+    return JSON.parse(Buffer.from(bytes).toString("utf8"));
+  };
+  const [os, architecture] = expected.platform.split("/");
+  const root = await read(expected.rootDigest), indexed = Array.isArray(root.manifests);
+  let manifestDigest = expected.rootDigest, manifest = root;
+  if (indexed) {
+    const candidates = root.manifests.filter((d: any) => d.platform?.os === os && d.platform?.architecture === architecture &&
+      (!d.platform.variant || architecture === "arm64" && d.platform.variant === "v8"));
+    if (candidates.length !== 1) throw new Error("oci_platform_manifest_ambiguous_or_missing");
+    manifestDigest = candidates[0].digest; manifest = await read(manifestDigest);
+  }
+  if (manifest.schemaVersion !== 2 || !valid(manifest.config?.digest) || !Array.isArray(manifest.layers) ||
+      manifest.layers.some((d: any) => !valid(d.digest))) throw new Error("invalid_oci_image_manifest");
+  const configDigest = manifest.config.digest, config = await read(configDigest);
+  if (config.os !== os || config.architecture !== architecture) throw new Error("oci_configuration_platform_mismatch");
+  const id = expected.reportedImageId.replace(/^(docker-pullable|docker|containerd):\/\//, "");
+  const reported = id.includes("@") ? id.slice(id.lastIndexOf("@") + 1) : id;
+  if (!valid(reported) || ![expected.rootDigest, manifestDigest, configDigest].includes(reported))
+    throw new Error("running_oci_image_identity_mismatch");
+  return { rootDigest: expected.rootDigest, manifestDigest, configDigest, platform: expected.platform,
+    reportedDigestType: reported === configDigest ? "image-config" : reported === manifestDigest ? "image-manifest" : "image-index",
+    descriptorChainVerified: true };
+}
+
+// A Kubernetes List creation is not transactional: duplicate identities must be
+// resolved before submitting it, including Secrets shared by environment keys.
+export function deduplicateRecoveryObjects(objects: any[]): any[] {
+  if (!Array.isArray(objects)) throw new Error("invalid_recovery_object_list");
+  const stable = (value: any): any => Array.isArray(value) ? value.map(stable) :
+    value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map(k => [k, stable(value[k])])) : value;
+  const seen = new Map<string, string>(), result: any[] = [];
+  for (const row of objects) {
+    if (!row || typeof row.apiVersion !== "string" || !row.apiVersion || typeof row.kind !== "string" || !row.kind ||
+        typeof row.metadata?.name !== "string" || !row.metadata.name ||
+        (row.metadata.namespace !== undefined && typeof row.metadata.namespace !== "string"))
+      throw new Error("invalid_recovery_object_identity");
+    const group = row.apiVersion.includes("/") ? row.apiVersion.split("/")[0] : "";
+    const key = JSON.stringify([group, row.kind, row.metadata.namespace ?? "", row.metadata.name]);
+    const definition = JSON.stringify(stable(row));
+    if (seen.has(key)) {
+      if (seen.get(key) !== definition) throw new Error("conflicting_recovery_object");
+      continue;
+    }
+    seen.set(key, definition); result.push(row);
+  }
+  return result;
+}
 
 // The caller must qualify the isolated guest, source archive and running binary.
 // An export filtered by platform may still contain multi-platform index objects.
