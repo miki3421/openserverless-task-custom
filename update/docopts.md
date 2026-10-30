@@ -23,6 +23,7 @@ Inspect the installed platform and compare it with a pinned release.
 
 ```text
 Usage:
+  update restore-reconcile-iam --restore-state=<file> [--json]
   update inventory [--namespace=<namespace>] [--instance=<instance>] [--context=<context>] [--json]
   update backup-plan --inventory=<file> [--json]
   update backup-collect --inventory=<file> --component=<id> --artifacts=<directory> [--tools=<directory>] [--json]
@@ -56,6 +57,7 @@ Usage:
   --archive=<directory>  Encrypted archive directory; packing requires a fresh destination.
   --password-file=<file> Private single-line archive key, at least 32 characters; keep outside archive/workspace.
   --workspace=<directory> Fresh private working directory; unpacking requires this explicitly.
+  --restore-state=<file> Private, explicit target checkpoint after restoring backend IAM and all mapped tenant definitions.
 ```
 
 Use `--option=value` for options with values. Local paths are resolved from
@@ -67,6 +69,14 @@ blocker; `1` means options, metadata, or required reads failed. The task runner
 may wrap a nonzero status; inspect `status` and `blockers` in JSON reports.
 
 ## Existing commands
+
+`restore-reconcile-iam` is an explicit post-restore security step, not a complete
+restore command. It requires the patched 0.9.0 operator and a protected checkpoint
+containing the target context, cluster/namespace identities, complete mapped
+Whisk/WhiskUser definitions and exact running operator identity. Ingress and
+application execution must remain disabled. It normalizes only anonymous S3
+grants, verifies the persisted policy and leaves later migration gates closed.
+See README for the checkpoint contract and ordering requirements.
 
 `inventory` discovers Nuvolaris or OpenServerless source resources, reads every
 OpenWhisk subject and entity with pagination, and compares them with WhiskUser

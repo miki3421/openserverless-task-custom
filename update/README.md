@@ -196,6 +196,43 @@ then insufficient to prove tenant authentication or private-object isolation.
 Record the inherited policy and separately qualify the target's intended public
 and private access using operations that exercise authorization.
 
+After **all** filer/IAM contents and mapped tenant definitions are restored,
+run the explicit security step before enabling ingress or applications:
+
+```sh
+ops update restore-reconcile-iam --restore-state=/private/target-restore-checkpoint.json --json
+```
+
+This requires the operator's IAM-resume patch, including persisted-policy
+verification. It calls only the anonymous-IAM reconciler; it does not bootstrap
+buckets, upload sample content, change tenant credentials, enable ingress or
+resume applications. It checks identities and the complete tenant definition
+set before and after execution and refuses active application pods, ingress or
+unsuspended CronJobs. This is not a full restore executor or acceptance test.
+
+The mode-0600 checkpoint is produced by the versioned restore adapter from the
+**complete saved, explicitly mapped definitions**, not by discovering an
+incomplete live target. Its contract is `SeaweedRestoreCheckpoint` in
+`seaweed-iam.ts`: `schemaVersion: 1`, `kind: ops-seaweedfs-restore-checkpoint`,
+`stage: backend-and-tenant-definitions-restored`, explicit target `context`, and
+`target` containing `namespace: openserverless`, `namespaceUid`, `clusterUid`,
+`whisk`, `users` and `operator`. Each Whisk/WhiskUser definition has its target
+`name`, target `uid` and complete mapped `spec`; the operator identity has its
+pod `name`, `uid`, container name and exact running `imageId`. The file contains
+credentials and must stay outside Git and logs. No tenant count or application
+name is hardcoded. Legacy system bucket names and custom public buckets require
+explicit mapping/classification before this checkpoint is prepared.
+
+Restore ordering matters: starting a patched operator and subsequently restoring
+legacy IAM overwrites its earlier normalization. Invoke this step after the last
+IAM/filer restore and every mapped WhiskUser, with the ingress/application gates
+closed. Any later IAM restore invalidates that checkpoint's acceptance and
+requires another reconciliation. Then test actual synthetic private-object
+GET/Range denial, intended public web access, authenticated ownership and peer
+isolation before opening the next gates. A bucket HEAD alone is insufficient.
+The command leaves `backupComplete`, `uninstallAllowed`, `ingressAllowed` and
+`applicationsAllowed` false.
+
 ## Native backup adapters
 
 The pinned procedure reference is

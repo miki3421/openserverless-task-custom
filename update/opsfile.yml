@@ -36,6 +36,15 @@ env:
 
 tasks:
 
+  restore-reconcile-iam:
+    desc: reconcile restored SeaweedFS IAM before opening ingress or enabling applications
+    silent: true
+    env:
+      OPS_UPDATE_REQUEST: >-
+        {"restoreState":{{toJson (default "" .__restore_state)}},"json":{{toJson (default false .__json)}}}
+    cmds:
+      - bun seaweed-iam.ts
+
   backup-pack:
     desc: encrypt a verified native backup and validate a fresh archive restore
     silent: true
