@@ -172,6 +172,21 @@ inspect the existing filer tree before resuming against already-copied volumes.
 The native-tool log guard also rejects prompt-prefixed errors such as `.error:`,
 even when the process exits with status zero.
 
+SeaweedFS 3.97's [`fs.meta.load` implementation](https://github.com/seaweedfs/seaweedfs/blob/3.97/weed/shell/command_fs_meta_load.go)
+also returns at EOF without an explicit wait for
+the final file goroutine. A real recovery left the last file absent despite
+reporting the full file count. `seaweed-meta.ts` can prepare a targeted load using
+unchanged original protobuf frames followed by an existing directory frame;
+the directory branch waits for pending files. The caller must first prove that
+selected files are absent, all common entries match, and the directory already
+has the saved attributes. This preserves the original backup and avoids replaying
+all metadata. Native completion counts alone do not establish recovery; full
+metadata and file-content verification remain required. The targeted workaround
+is locally qualified and awaits guest verification.
+For a fresh full load, the helper keeps the complete source byte stream and
+appends a saved directory frame when the stream would otherwise end in a file.
+Both forms leave the original artifact unchanged and require isolated acceptance.
+
 ## Native backup adapters
 
 The pinned procedure reference is
