@@ -1,6 +1,6 @@
 # Whole-host Kind to K3s migration preparation
 
-Date:2026-11-18. State: **in progress**. Source baseline:d5f9b9e97b491446ae0b7aa417cdac6e39c08ba0.
+Date:2026-11-18. State: **in progress — phase1 completed; operational phases not started**. Source baseline:d5f9b9e97b491446ae0b7aa417cdac6e39c08ba0.
 Execution mode:SINGLE_AGENT implementation, separate independent read-only review.
 Skills:ops-cli-usage,ops-task-authoring,company baseline. This is an existing
 migration-contract change, not a new HLD or an application change. Company
@@ -12,7 +12,7 @@ handoff/evidence is retained. No new infrastructure or operational authority.
 
 | Phase | State | Contract and evidence required |
 | --- | --- | --- |
-|1. Modify and qualify the migrator | in progress | Stop the selected Kind container without stopping/disabling Docker. Explicit ordered external-container selection, original-state inventory, current daemon/source/target guards; focused local tests and independent review |
+|1. Modify and qualify the migrator | completed | Stop the selected Kind container without stopping/disabling Docker. Explicit ordered external-container selection, original-state inventory, current daemon/source/target guards; focused local tests and independent review |
 |2. Prepare recovery and stop source writers | not started | Operator-approved maintenance; suspend application ingress/jobs/sends, verify final consistent recovery generation, stop selected external containers in dependency order and Kind. Keep Docker service/socket available. Record originally stopped containers; no implicit activation |
 |3. Install native K3s | not started | Exact qualified ARM64 artifacts, non-conflicting ports/networks, bootstrap-only target and unchanged local Docker daemon. No source deletion |
 |4. Migrate OPS0.9.0 and restore | not started | Restore compatible platform definitions, users/credentials/ACLs, images and persistent data; inventory all other Kind workloads/PVCs. Preserve per-target identity, checksums and restore fences. Do not equate ordinary data backup with full installation migration |
@@ -62,10 +62,10 @@ Ollama move, live backup/restore, service stop, migration or application change
 is authorized/executed by this development iteration. Publication and operational
 acceptance are separate from local source qualification.
 
-## Local implementation checkpoint
+## Initial author checkpoint (retained evidence)
 
-2026-11-18: implementation and author qualification complete; independent final
-review pending. Native module/installer/target marker2 and restore-phase fences
+2026-11-18: initial implementation/author qualification completed; the following
+independent durability review required the correction recorded below. Native module/installer/target marker2 and restore-phase fences
 implemented. The earlier design review froze18 independent adversarial cases
 before edits (manifest digest3e74bcd5ef7a62308b04787764cbe9dc97637ef05b56125772ebaa1861d8694f).
 Author suites:121migration +84restore distinct cases PASS, separately repeated
@@ -94,4 +94,32 @@ persistence covers newly created run/migrate entries before the first stop.
 Any sync error prevents later phases; failure reporting is best-effort without
 claiming unavailable evidence. The shared legacy store helper remains byte-exact.
 Additional tests qualify file/rename/both-directory ordering and injected sync
-failure with zero host commands. Updated immutable review remains pending.
+failure with zero host commands. The updated immutable review is qualified below.
+
+## Current development qualification
+
+Phase1 completed on immutable runtime source2c319fb1f86b0a5cfa2dfdb525c51c481b703048.
+Author123migration +84restore distinct cases PASS in normal and optimized Python
+modes (207distinct cases; modes are not additional coverage). Independent frozen
+18plus supplemental3 controls PASS in both modes, and48focused replay tests PASS;
+these overlap author coverage and are not added into an artificial grand total.
+Independent source GO receipt digest
+3398bd70d30f1723b9203680e75e01584a272ad8d9d22702da2098394c5d2262.
+Original0133b43a HOLD, all passing prior evidence and initial fixture failure
+remain retained. Legacy store helpers and profile validation are byte-exact;
+application checkout, dependencies/catalogs and public CLI unchanged.
+
+This final follow-up changes documentation only. Publish the separate
+codex/migrate-kind-only-docker-preserved branch; do not merge main or execute
+migration. Phases2..8 remain not started, including maintenance/backup/stop,
+ARM64 target qualification, full Kind add-on recovery, GPU/Ollama, network/service
+reconnection and operator acceptance. No service stop, installer, OPS command,
+backup/restore, dependency download or application mutation occurred in this
+iteration. No live migration readiness claim follows from synthetic tests.
+
+The task-owned private evidence directory retains onboarding, exact source and
+test/review receipts until this branch's operational handoff/qualification ends.
+Synthetic test directories are automatically removed. No shared cache, unrelated
+private data or previous recovery material is deleted. Source bytecode cache
+entries with unknown prior ownership are left untouched; no operational payload
+was stored in them by these tests.
