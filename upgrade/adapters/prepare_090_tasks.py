@@ -27,7 +27,7 @@ archive=home/'.cli-prerequisites.tar'
 with archive.open('rb') as f:
     if hashlib.file_digest(f,'sha256').hexdigest()!=CLI_PREREQUISITES['sha256']:
         raise ValueError('CLI prerequisites checksum differs')
-binary=home/'.ops/linux-amd64/bin';binary.mkdir(mode=0o755,parents=True,exist_ok=True)
+binary=home/globals().get('TARGET_BIN_RELATIVE','.ops/linux-amd64/bin');binary.mkdir(mode=0o755,parents=True,exist_ok=True)
 with tarfile.open(archive) as tar:
     for member in tar.getmembers():
         path=Path(member.name)

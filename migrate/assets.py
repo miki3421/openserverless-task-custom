@@ -30,6 +30,7 @@ import urllib.request
 import zipfile
 
 from acquisition import preflight as acquisition_preflight,check_remaining,check_expansion
+from platform_contract import release_platform
 import image_namespace
 from image_references import immutable as immutable_reference
 
@@ -81,7 +82,7 @@ def assemble_target_tasks(release,root,command):
 def assemble(release, root, ops, bun, bin_dir, command, progress, *, k3s_binary='/usr/local/bin/k3s',manifest_fetch=None):
     root = Path(root); root.mkdir(mode=0o700)
     for name in ('tools', 'clients', 'tasks', 'images', 'downloads'): (root / name).mkdir(mode=0o700)
-    acquisition=acquisition_preflight(release['images'],root,command,**({'fetch':manifest_fetch}if manifest_fetch else{}))
+    acquisition=acquisition_preflight(release['images'],root,command,platform=release_platform(release),**({'fetch':manifest_fetch}if manifest_fetch else{}))
     for name, source in [('ops', ops), ('bun', bun), ('k3s', k3s_binary)]:
         shutil.copyfile(source, root / 'tools' / name); (root / 'tools' / name).chmod(0o700)
     progress('tools')
@@ -138,6 +139,8 @@ def assemble(release, root, ops, bun, bin_dir, command, progress, *, k3s_binary=
 
 
 def acquire_images(release,root,command,progress,acquisition,*,metadata=None):
+    selected=release_platform(release)
+    if acquisition.get('platform','linux/amd64') != selected: raise ValueError('image_acquisition_platform_mismatch')
     root=Path(root)
     # The software stage is complete, and its actual retained files must fit the
     # fixed scratch allocation before any provider fetch is allowed.
@@ -164,7 +167,7 @@ def acquire_images(release,root,command,progress,acquisition,*,metadata=None):
         check_remaining(acquisition,root,command)
         # Client.Fetch explicitly refuses unpack. Unlike images pull this stage
         # cannot allocate overlay snapshots before their verified expansion bound.
-        command('image-fetch-' + str(index), prefix + ['content', 'fetch', '--all-metadata', '--platform', 'linux/amd64', immutable], timeout=1800)
+        command('image-fetch-' + str(index), prefix + ['content', 'fetch', '--all-metadata', '--platform', selected, immutable], timeout=1800)
         acquisition['remainingWorkBytes']-=acquisition['perImageContentUpperBoundBytes'][ref]
         table = command('image-list-' + str(index), prefix + ['images', 'list']).decode()
         existing = {r.split()[0]: r.split()[2] for r in table.splitlines()[1:] if len(r.split()) >= 3}
@@ -181,7 +184,7 @@ def acquire_images(release,root,command,progress,acquisition,*,metadata=None):
         progress('image-export', index, 2)
         check_remaining(acquisition,root,command)
         dest = root / 'images' / name
-        command('export-' + name, prefix + ['images', 'export', '--platform', 'linux/amd64', str(dest), *refs], timeout=1800)
+        command('export-' + name, prefix + ['images', 'export', '--platform', selected, str(dest), *refs], timeout=1800)
         command('own-' + name, ['sudo', '-n', 'chown', str(os.getuid()) + ':' + str(os.getgid()), str(dest)])
         dest.chmod(0o600)
         acquisition['remainingWorkBytes']-=acquisition['exportUpperBoundBytes']

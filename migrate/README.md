@@ -360,3 +360,14 @@ inputs; even identity-pass is not native runtime or migration readiness.
 See [ARM64 and full-path checks](arm64-full-path-checks.md) for current blockers,
 evidence levels and unexecuted native/complete-rehearsal gates. Do not repin the
 AMD64 catalog to local binary hashes or enable ARM64 by removing its guards.
+
+### ARM64 native staging and restore-path preparation
+
+The five previously pinned upstream native inputs have been acquired and
+verified offline; see [native byte findings](arm64-native-findings.json) and the
+[current complete-path matrix](arm64-full-path-checks.md). They are not installed
+or executed. Explicit platform propagation now covers acquisition/expansion,
+source-cache fetch, image imports/proofs and worker CLI/ELF paths. Existing
+profiles and operational host/catalog guards remain AMD64: four image roots and
+target OPS/Bun still block a complete native catalog. No ARM64 operational route
+or migration is enabled by this preparation.

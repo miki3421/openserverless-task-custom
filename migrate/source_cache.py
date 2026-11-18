@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 
 from acquisition import preflight,check_remaining
+from platform_contract import architecture
 from images import location
 from store_common import require,save
 
@@ -46,13 +47,16 @@ def recovery_image(cache):
     raise ValueError('original_image_bytes_need_verified_local_input')
 
 
-def recover_missing(cache,work,run,index):
+def recover_missing(cache,work,run,index,*,platform='linux/amd64'):
+    # The caller must pass the proven source platform, never infer the target.
+    architecture(platform)
     row=recovery_image(cache)
     staging=Path(work)/('source-image-'+str(index));staging.mkdir(mode=0o700)
-    plan=preflight([{'reference':row['reference'],'digest':row['digest']}],staging,run)
+    plan=preflight([{'reference':row['reference'],'digest':row['digest']}],staging,run,platform=platform)
+    require(plan.get('platform','linux/amd64')==platform,'source_acquisition_platform_mismatch')
     check_remaining(plan,staging,run)
     run('source-image-fetch-'+str(index),['sudo','-n','/usr/local/bin/k3s','ctr','--namespace','k8s.io',
-        'content','fetch','--all-metadata','--platform','linux/amd64',row['immutable']],timeout=1800)
+        'content','fetch','--all-metadata','--platform',platform,row['immutable']],timeout=1800)
     plan['remainingWorkBytes']=plan['workingBytes']-plan['perImageContentUpperBoundBytes'][row['reference']]
     check_remaining(plan,staging,run)
     save(staging/'fetched-original-root.json',{'reference':row['reference'],'digest':row['digest'],

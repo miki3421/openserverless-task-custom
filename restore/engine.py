@@ -23,6 +23,7 @@ from archive import unpack
 from service_dns import enable_dns,verify_dns
 from offline_runtimes import verify_runtime_cache
 import same_host
+from platform_contract import profile_platform,architecture
 from storage import inspect_storage, require_headroom, add_image_allowance
 from image_storage import image_storage
 
@@ -49,6 +50,8 @@ def main(request_path):
     if request['reset']:
         from reset import main as reset_attempt
         reset_attempt(p,request['profile'],caller,request['check'],TASK);return
+    selected_platform=profile_platform(p)
+    # The validated schema1 contract still selects AMD64; ARM64 stays blocked.
     require(sys.platform=='linux'and os.uname().machine=='x86_64','qualified_linux_amd64_required')
     marker=private_json('/etc/ops-restore-target.private.json',0)
     same_host_route=p['route']==same_host.ROUTE
@@ -123,19 +126,19 @@ def main(request_path):
         progress('verify-image-storage')
         images=[root/'source-cache.tar',inputs/'images/baseline.tar',inputs/'images/operator-candidate.tar']
         if 'images/catalog-runtimes.tar'in manifest['files']:images.append(inputs/'images/catalog-runtimes.tar')
-        image_plan=image_storage(images);save(root/'image-storage-plan.json',image_plan)
+        image_plan=image_storage(images,architecture=architecture(selected_platform));save(root/'image-storage-plan.json',image_plan)
         storage=add_image_allowance(storage,image_plan);save(root/'storage-plan.json',storage)
         require_headroom(storage)
         progress('import-offline-images')
         # The fresh K3s sandbox image must exist before the first native restore
         # pod. Import the pinned target system images first, then restore the
         # exact source image aliases used by backend identity verification.
-        run('import-target-system-images',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','import','--platform','linux/amd64',str(inputs/'images/baseline.tar')],timeout=1800)
+        run('import-target-system-images',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','import','--platform',selected_platform,str(inputs/'images/baseline.tar')],timeout=1800)
         # No source node bootstrap, Kubernetes metadata or kind control-plane
         # database is used.
-        run('import-source-runtime-images',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','import','--platform','linux/amd64',str(root/'source-cache.tar')],timeout=1800)
+        run('import-source-runtime-images',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','import','--platform',selected_platform,str(root/'source-cache.tar')],timeout=1800)
         if 'images/catalog-runtimes.tar'in manifest['files']:
-            run('import-offline-catalog-runtime-images',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','import','--platform','linux/amd64',str(inputs/'images/catalog-runtimes.tar')],timeout=1800)
+            run('import-offline-catalog-runtime-images',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','import','--platform',selected_platform,str(inputs/'images/catalog-runtimes.tar')],timeout=1800)
         require_headroom(storage)
         progress('verify-offline-runtimes');verify_runtime_cache(root,p,run);state['completed'].append('verify-offline-runtimes')
         target_root=root/'target-090';target_root.mkdir(mode=0o700)

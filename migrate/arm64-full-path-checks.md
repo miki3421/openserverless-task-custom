@@ -184,7 +184,8 @@ The [public metadata findings](arm64-metadata-findings.json) retain original
 root/selected-manifest/config identities and upstream-only native input proposals.
 Official metadata establishes an ARM64 K3s checksum, Restic archive checksum,
 Milvus ARM64 archive identity and CP312 ARM64 PyMongo/platform-neutral dnspython
-wheel identities. Their actual bytes are NOT downloaded or ELF/import-qualified.
+wheel identities. At that metadata checkpoint their bytes were not downloaded or ELF/import-qualified.
+The subsequent explicitly authorized byte-staging iteration is recorded below.
 These proposals do not rewrite the installedTools pins or authorize downloads.
 The native target CLI/Bun/tool provenance and12wrapper/worker architecture
 contracts still need qualification; current local OPS0.1.0 is preserved.
@@ -206,3 +207,45 @@ binary/layer/ABI/runtime and complete migration gates remain BLOCKED/NOT_RUN.
 The final follow-up records this receipt only and does not alter audited code,
 operational catalogs, source guards or application. Publish the separate branch;
 no main merge or additional download/operation is implied.
+
+## Native byte staging and explicit restore paths — 2026-11-18
+
+State: **in progress; byte staging completed, operational ARM64 blocked**.
+The operator explicitly authorized acquiring the missing native inputs. The
+closed five-input manifest is `releases/arm64-native-inputs.json`, not a target
+release catalog. `stage_native_artifacts.py` is offline-only: no network, tool
+execution, package import, installation, registry operation or service access.
+Original SHA/size checks precede staging; safe bounded archive handling and
+ELF64 little-endian AArch64 identity guard binaries. Both complete original
+wheels retain their SHA/size and native-member checks. See the public, path-free
+`arm64-native-findings.json` for exact proofs and pending gates. Computed inner
+binary hashes are observations anchored by the upstream archive, not an
+independent target CLI/tool attestation or ABI qualification.
+
+All five inputs now have byte identity proofs: K3s v1.36.4+k3s1,
+Restic0.19.1, Milvus Backup0.6.1, PyMongo4.18.2 CP312 ARM64, dnspython2.9.0.
+They are retained privately for the next native qualification; global binaries,
+installed OPS, target catalog and installer pins remain untouched.
+
+`restore/platform_contract.py` defines closed platform, CLI directory and native
+ELF primitives. Acquisition records its selected platform and propagates it to
+canonical OCI expansion checks, fetch and export. Source-cache recovery takes
+the explicitly proven source platform; it never infers it from a target. Restore
+imports/storage and worker image proofs, etcd identity and CLI paths now consume
+selected constants. Native client directory discovery supports ARM64 without
+changing the persisted target platform.
+
+This is preparatory source plumbing, not an enabled ARM64 restore route. Existing
+restore profile1 remains exactly AMD64; new schema/platform fields are rejected.
+Root installer and target guards still reject unqualified ARM64. Existing marker2
+continues to mean sourceRuntime proof only. New persisted ARM64 profile/marker/
+archive contracts must bind all native catalog/tool/source proofs before enablement.
+The old upgrade path does not load a new restore-only module; worker defaults
+retain its previous AMD64 behavior. Frozen checkpoint/code mismatch still stops
+resume rather than silently refreshing workers. The canonical backup engine is
+unchanged.
+
+Still blocked: the four selected AMD64 image roots, target OPS/Bun provenance,
+full image layer closure, source architecture proof, native ABI/imports and
+isolated complete rehearsal. No role is removed, no emulation/version change or
+mutable-tag replacement is introduced. Operational phases2..8 remain NOT_STARTED.

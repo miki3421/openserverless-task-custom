@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "platform": "linux/arm64",
+  "artifacts": [
+    {
+      "role": "k3s",
+      "inputSha256": "c920706346d5ad4e5cd3c7bf1bb09ce71ebe07fec829e513e40f1caf98aed8bb",
+      "inputBytes": 71368866,
+      "proof": {
+        "platform": "linux/arm64",
+        "sha256": "c920706346d5ad4e5cd3c7bf1bb09ce71ebe07fec829e513e40f1caf98aed8bb",
+        "nativeBinaryExecuted": false,
+        "operationallyQualified": false,
+        "verificationScope": "byte identity only; ABI and native execution not qualified"
+      }
+    },
+    {
+      "role": "restic",
+      "inputSha256": "a5f64aaab53d51e311fa3829124c5b703f2d14cf187d8640b6be3b2b49376465",
+      "inputBytes": 9044264,
+      "proof": {
+        "platform": "linux/arm64",
+        "sha256": "2fb45ac6f9071b6f20eb883953a188f9e7c7cb6bbe43c67a2e47ada4e85ee7f0",
+        "nativeBinaryExecuted": false,
+        "operationallyQualified": false,
+        "verificationScope": "byte identity only; ABI and native execution not qualified",
+        "binaryHashOrigin": "observed after verifying the upstream-pinned original archive"
+      }
+    },
+    {
+      "role": "milvus-backup",
+      "inputSha256": "8f3d140596b0db51e7c30f19356ef0c86e3f2ad0ad853983bc3e9c2ca1b23089",
+      "inputBytes": 27459388,
+      "proof": {
+        "platform": "linux/arm64",
+        "sha256": "e9e6f04d4f320dfacc7751879b0823edeb8c69b990c2b40301ecf9eb1c77df3e",
+        "nativeBinaryExecuted": false,
+        "operationallyQualified": false,
+        "verificationScope": "byte identity only; ABI and native execution not qualified",
+        "binaryHashOrigin": "observed after verifying the upstream-pinned original archive"
+      }
+    },
+    {
+      "role": "pymongo",
+      "inputSha256": "c743347143298252948e038f768ea6f71b71ef8a85b7cf0dc13b734e072f74da",
+      "inputBytes": 1050746,
+      "proof": {
+        "nativeImportExecuted": false,
+        "platformIndependent": false,
+        "verificationScope": "byte identity only; ABI and native execution not qualified"
+      }
+    },
+    {
+      "role": "dnspython",
+      "inputSha256": "9a4aedb833c3c1b49214d04d44d3032ab7a9135f7c1d29a549b4ff78fd82fda9",
+      "inputBytes": 354822,
+      "proof": {
+        "nativeImportExecuted": false,
+        "platformIndependent": true,
+        "verificationScope": "byte identity only; ABI and native execution not qualified"
+      }
+    }
+  ],
+  "installed": false,
+  "nativeRuntimeQualified": false,
+  "migrationReady": false,
+  "inputManifestSha256": "840442ad5498afda3364e7648611a667062e982e3967e3f2e72574b5b197ab9b",
+  "priorMetadataReceiptSha256": "98a9dae9013cefdb0132692f0a1c22728516850a29fefa0cd4c2d961bdd3f7aa",
+  "downloadedBytes": 109278086,
+  "remainingBlockers": [
+    "complete native operator image at selected source commit",
+    "native equivalents of the three selected legacy runtime roots without version/semantic changes",
+    "trusted target OPS and Bun provenance/pins",
+    "versioned ARM64 source archive/profile/root marker contract",
+    "isolated native ABI and full migration rehearsal"
+  ]
+}

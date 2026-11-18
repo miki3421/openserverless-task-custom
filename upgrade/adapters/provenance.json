@@ -152,5 +152,21 @@
     },
     "executedTaskCommit": "78600137b5fdd5bca9590dab2a2ac334a6e26d69",
     "qualificationReport": "restore/qualification-kind-010-to-k3s-090.md"
+  },
+  "arm64PreparationExtension": {
+    "baseCommit": "69a97f57c8ad56815330d2a78457d5aec2ac65b2",
+    "status": "source preparation only; operational profiles remain schema1 AMD64",
+    "qualification": "focused synthetic checks and immutable independent review; native runtime and full ARM64 restore NOT_RUN",
+    "files": {
+      "upgrade/adapters/bootstrap_090.py": "b6e54be958662a6e90620075ac20b8a33d088d663e79f2881bf29b5b1e3641d0",
+      "upgrade/adapters/complete.py": "a330d45e87e9140b565b43ea670bc2bd0e7859a046395e89ae075176ed06bbf0",
+      "upgrade/adapters/deploy_090_apis.py": "1827d85f1ba71a0fe799e5172875f1e2cf489ca8e6477f42ba59970c187d4822",
+      "upgrade/adapters/driver.py": "97e0665e15adb6ae57b627112b02b4c970a778f5050d83584cf7f5d3c4144315",
+      "upgrade/adapters/guest_library.py": "5297cd108db21486adddad2eebda64d6f9b788152a335003da54fdac4d1885c3",
+      "upgrade/adapters/prepare_090_tasks.py": "fc633f25b4a9413337c7daff53c77ea41055d9fa905a64250648dd557818fddd",
+      "upgrade/adapters/restore_etcd.py": "2e3e6c1294bce7f05465344cda1d538b49cc83209fe5755c0fc156aaa83acfc2",
+      "restore/platform_contract.py": "2b06d68268cbaa1d48ae0f0490c9105fbb6b7f1055e7d6df0004d67345565264",
+      "restore/engine.py": "da07a24e957b3df64699c168ff865d92fe5ded9c54e8ea8bfa6ea1e89f6b5848"
+    }
   }
 }

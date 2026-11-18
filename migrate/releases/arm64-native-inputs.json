@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "offline-native-artifact-inputs",
+  "platform": "linux/arm64",
+  "operationallyQualified": false,
+  "artifacts": [
+    {
+      "url": "https://github.com/k3s-io/k3s/releases/download/v1.36.4%2Bk3s1/k3s-arm64",
+      "sha256": "c920706346d5ad4e5cd3c7bf1bb09ce71ebe07fec829e513e40f1caf98aed8bb",
+      "role": "k3s",
+      "format": "elf"
+    },
+    {
+      "url": "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_arm64.bz2",
+      "sha256": "a5f64aaab53d51e311fa3829124c5b703f2d14cf187d8640b6be3b2b49376465",
+      "role": "restic",
+      "format": "bz2-elf"
+    },
+    {
+      "url": "https://github.com/zilliztech/milvus-backup/releases/download/v0.6.1/milvus-backup_0.6.1_Linux_arm64.tar.gz",
+      "sha256": "8f3d140596b0db51e7c30f19356ef0c86e3f2ad0ad853983bc3e9c2ca1b23089",
+      "bytes": 27459388,
+      "role": "milvus-backup",
+      "format": "tar-gz-elf"
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/cc/06/628f93f15f269d8a1ea20a024083e67871f722876a33992aec5525a6c6c4/pymongo-4.18.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+      "sha256": "c743347143298252948e038f768ea6f71b71ef8a85b7cf0dc13b734e072f74da",
+      "bytes": 1050746,
+      "role": "pymongo",
+      "format": "wheel"
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/10/02/cdcc9b7c051786a103c3b09e1003a82fa0c66bcb91ffbdabcfbf7b4163b9/dnspython-2.9.0-py3-none-any.whl",
+      "sha256": "9a4aedb833c3c1b49214d04d44d3032ab7a9135f7c1d29a549b4ff78fd82fda9",
+      "bytes": 354822,
+      "role": "dnspython",
+      "format": "wheel"
+    }
+  ]
+}

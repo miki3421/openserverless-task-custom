@@ -21,6 +21,12 @@ import { isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { flag, verifyEngine } from "../backup/main";
 
+// Client discovery only. Persisted target profiles never infer their platform.
+export function bundledBin(home:string,system:string,architecture:string) {
+  if(system!=="linux"||!["x64","arm64"].includes(architecture))throw Error("unsupported_native_cli_platform");
+  return join(home,".ops/linux-"+(architecture==="x64"?"amd64":"arm64")+"/bin");
+}
+
 export function options(value:any) {
   if(!value||typeof value!=="object"||Array.isArray(value)||Object.keys(value).some(k=>!["prepare","status","to","from","toColon","fromColon","check","json","repository","key","snapshot"].includes(k)))throw Error("invalid_migrate_options");
   const toColon=flag(value.toColon),fromColon=flag(value.fromColon);
@@ -46,7 +52,7 @@ export async function main() {
   const home=process.env.OPS_HOME||join(homedir(),".ops"),tmp=join(home,"tmp");mkdirSync(tmp,{recursive:true,mode:0o700});
   const file=join(tmp,"migrate-request-"+randomUUID()+".json");
   writeFileSync(file,JSON.stringify({...selected,...(source==="k3s"?{source,status}:{}),opsHome:home,ops:process.env.OPS_CMD||process.env.OPS||join(homedir(),".local/bin/ops"),
-    bun:process.execPath,bin:process.env.OPS_BIN||join(homedir(),".ops/linux-amd64/bin")}),{flag:"wx",mode:0o600});
+    bun:process.execPath,bin:process.env.OPS_BIN||bundledBin(homedir(),process.platform,process.arch)}),{flag:"wx",mode:0o600});
   try {
     const child=Bun.spawn(["python3","-B",join(import.meta.dir,source==="k3s"?"k3s.py":prepare?"prepare.py":"run.py"),file],{stdin:"inherit",stdout:"inherit",stderr:"inherit",
       env:{...process.env,PYTHONDONTWRITEBYTECODE:"1",GIT_OPTIONAL_LOCKS:"0"}});process.exitCode=await child.exited;

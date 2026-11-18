@@ -16,7 +16,7 @@
 // under the License.
 
 import { expect, test } from "bun:test";
-import { options } from "./main";
+import { options, bundledBin } from "./main";
 
 test("simple prepare discovers inputs and supports explicit immutable selection",()=>{
   expect(options({})).toEqual({prepare:false,status:false,to:"k3s",source:"kind",check:false,json:false,repository:"",key:"",snapshot:""});
@@ -39,4 +39,11 @@ test("prepare rejects invented targets, credentials in place of paths and ambigu
   for(const value of [null,[],{to:"kind"},{repository:"/repo"},{key:"/key"},{snapshot:"latest"},{snapshot:"a".repeat(64)},
     {repository:"https://example/repo",key:"/key"},{repository:"/repo",key:"secret"},{check:"yes"},{offline:true}])
     expect(()=>options(value)).toThrow();
+});
+
+test("native client discovery keeps old AMD64 and selects ARM64 explicitly",()=>{
+  expect(bundledBin("/home/synthetic","linux","x64")).toBe("/home/synthetic/.ops/linux-amd64/bin");
+  expect(bundledBin("/home/synthetic","linux","arm64")).toBe("/home/synthetic/.ops/linux-arm64/bin");
+  for(const [system,arch] of [["darwin","arm64"],["linux","riscv64"],["linux","x86_64"],["linux","../../outside"]])
+    expect(()=>bundledBin("/home/synthetic",system,arch)).toThrow();
 });

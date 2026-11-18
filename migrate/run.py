@@ -36,6 +36,8 @@ from acquisition import preflight as acquisition_preflight,check_remaining
 sys.path.insert(0,str(TASK/'restore'))
 import source_runtime
 
+from platform_contract import release_platform
+
 def durable_save(path, value):
     """Persist new migration evidence and its newly created run-directory entry.
 
@@ -139,7 +141,7 @@ def execute(r):
             require(digest(regular(path,uid,False))==target_release['installedTools'][key],'qualified_'+key+'_required')
         images=availability(target_release['images']);durable_save(work/'image-availability.json',images)
         require(not images['missing'],'target_images_not_published')
-        acquisition=acquisition_preflight(target_release['images'],work,command,target_ready=resuming)
+        acquisition=acquisition_preflight(target_release['images'],work,command,target_ready=resuming,platform=release_platform(target_release))
         runtime = None
         if resuming and observed['marker'].get('schemaVersion') == 1:
             # Already prepared legacy targets keep their original daemon-off fence.

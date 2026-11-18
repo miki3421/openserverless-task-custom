@@ -68,6 +68,14 @@ if SAME_HOST_RESTORE:
     PLAN['connectedSameHostRestore']=True
 RUNTIME=json.loads((ROOT/'source-runtime.json').read_text())
 task=Path(CONFIG['taskRoot'])
+TARGET_PLATFORM='linux/amd64'
+TARGET_BIN_RELATIVE='.ops/linux-amd64/bin'
+if RESTORE_MODE:
+    platform_scope={}
+    exec(compile((task/'restore/platform_contract.py').read_text(),'platform_contract.py','exec'),platform_scope)
+    TARGET_PLATFORM=platform_scope['profile_platform'](PROFILE)
+    TARGET_BIN_RELATIVE=platform_scope['binary_directory'](TARGET_PLATFORM)
+    TARGET_ELF_IDENTITY=platform_scope['elf_identity']
 OFFLINE_MODULE=(task/'update/offline.ts').read_text()
 SEAWEED_META_MODULE=(task/'update/seaweed-meta.ts').read_text()
 AUTH_ASSERTIONS_MODULE=(ADAPTERS/'mongo_assertions.py').read_text()

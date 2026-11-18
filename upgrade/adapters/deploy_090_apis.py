@@ -28,7 +28,7 @@ config.setdefault('operator',{})['component']=p.plan['finalWhiskSpec']['componen
 config_path.write_text(json.dumps(config,indent=2));config_path.chmod(0o600);os.chown(config_path,account.pw_uid,account.pw_gid)
 env={'OPS_ROOT':str(task),'OPS_BRANCH':'feature/migration-recovery-0.9.0',
      'OPS_REPO':'https://github.com/miki3421/openserverless-task-custom',
-     'KUBECONFIG':str(home/'.kube/config'),'PATH':str(home/'.local/bin')+':'+str(home/'.ops/linux-amd64/bin')+':/usr/local/bin:/usr/bin:/bin'}
+     'KUBECONFIG':str(home/'.kube/config'),'PATH':str(home/'.local/bin')+':'+str(home/globals().get('TARGET_BIN_RELATIVE','.ops/linux-amd64/bin'))+':/usr/local/bin:/usr/bin:/bin'}
 if globals().get('SAME_HOST_RESTORE',False):
     env.update(OPS_HOME=str(selected_home),OPS_TMP=str(selected_home/'tmp'),
                KUBECONFIG=str(selected_home/'tmp/kubeconfig'))

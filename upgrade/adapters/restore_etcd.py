@@ -32,7 +32,11 @@ inputDir=lab.logs/'snapshot-input';inputDir.mkdir(mode=0o700)
 lab.extract(lab.artifact(lab.files('etcd-data')[0]),inputDir,0,0)
 tool=inputDir/'etcdutl'
 with tool.open('rb') as handle:header=handle.read(20)
-if header[:5]!=b'\x7fELF\x02' or header[18:20]!=b'\x3e\x00':raise ValueError('etcd native restore utility architecture mismatch')
+if 'TARGET_ELF_IDENTITY' in globals():
+    native_identity=TARGET_ELF_IDENTITY(header,TARGET_PLATFORM)
+else:
+    native_identity=len(header)>=20 and header[:6]==b'\x7fELF\x02\x01' and header[18:20]==b'\x3e\x00'
+if not native_identity:raise ValueError('etcd native restore utility architecture mismatch')
 tool.chmod(0o700)
 snapshot=json.loads((inputDir/'status.json').read_text())
 verified=json.loads(lab.run('native-snapshot-status',[str(tool),'snapshot','status',str(inputDir/'snapshot.db'),'--write-out=json']).stdout)

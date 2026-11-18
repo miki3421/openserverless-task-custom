@@ -173,7 +173,7 @@ console.log(JSON.stringify(result));
         reference=source_image_reference(source,RUNTIME['runtimeImages'])
         listing=self.run('native-image-cache',['/usr/local/bin/k3s','ctr','--namespace','k8s.io','images','ls']).stdout.decode().splitlines()
         cached={line.split()[0]:line.split()[2] for line in listing[1:] if len(line.split())>=3}
-        expected={'rootDigest':reference['manifestDigest'],'cachedRootDigest':cached.get(reference['reference']),'platform':'linux/amd64','reportedImageId':runtime['imageID'],'sourceReportedImageId':source['runningImageId']}
+        expected={'rootDigest':reference['manifestDigest'],'cachedRootDigest':cached.get(reference['reference']),'platform':globals().get('TARGET_PLATFORM','linux/amd64'),'reportedImageId':runtime['imageID'],'sourceReportedImageId':source['runningImageId']}
         proof=json.loads(self.run('native-image-proof',[str(self.root/'candidate/tools/bun'),str(self.logs/'qualify-image.ts')],input=json.dumps(expected).encode()).stdout)
         if proof['descriptorChainVerified'] is not True or proof['sourceDescriptorChainVerified'] is not True:raise ValueError('Native source and target image identities not proven')
         return pod

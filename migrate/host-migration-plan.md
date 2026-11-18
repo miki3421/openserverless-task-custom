@@ -1,6 +1,6 @@
 # Whole-host Kind to K3s migration preparation
 
-Date:2026-11-18. State: **in progress — phase1 completed; operational phases not started**. Source baseline:d5f9b9e97b491446ae0b7aa417cdac6e39c08ba0.
+Date:2026-11-18. State: **in progress — Kind-only source completed; ARM64 preparation in progress; operational phases not started**. Source baseline:d5f9b9e97b491446ae0b7aa417cdac6e39c08ba0.
 Execution mode:SINGLE_AGENT implementation, separate independent read-only review.
 Skills:ops-cli-usage,ops-task-authoring,company baseline. This is an existing
 migration-contract change, not a new HLD or an application change. Company
@@ -12,7 +12,7 @@ handoff/evidence is retained. No new infrastructure or operational authority.
 
 | Phase | State | Contract and evidence required |
 | --- | --- | --- |
-|1. Modify and qualify the migrator | completed | Stop the selected Kind container without stopping/disabling Docker. Explicit ordered external-container selection, original-state inventory, current daemon/source/target guards; focused local tests and independent review |
+|1. Modify and qualify the migrator | in progress (Kind-only source completed; native ARM64 pending) | Stop the selected Kind container without stopping/disabling Docker. Explicit ordered external-container selection, original-state inventory, current daemon/source/target guards; focused local tests and independent review |
 |2. Prepare recovery and stop source writers | not started | Operator-approved maintenance; suspend application ingress/jobs/sends, verify final consistent recovery generation, stop selected external containers in dependency order and Kind. Keep Docker service/socket available. Record originally stopped containers; no implicit activation |
 |3. Install native K3s | not started | Exact qualified ARM64 artifacts, non-conflicting ports/networks, bootstrap-only target and unchanged local Docker daemon. No source deletion |
 |4. Migrate OPS0.9.0 and restore | not started | Restore compatible platform definitions, users/credentials/ACLs, images and persistent data; inventory all other Kind workloads/PVCs. Preserve per-target identity, checksums and restore fences. Do not equate ordinary data backup with full installation migration |
@@ -148,3 +148,59 @@ Independent metadata closeout GO on5ab691d3 (receipt154c2cd8), confirming all49
 original roles/143JSON observations and all5upstream native input proposals.
 The current result remains BLOCKED for native ARM64 migration. Source39709c5f
 and operational predecessor7a2d294 are unchanged by this documentation closeout.
+
+## ARM64 artifact and restore-path iteration — 2026-11-18
+
+State: **in progress**. Operator explicitly requests the missing ARM64 artifacts
+and restore-path preparation on this dedicated branch. Acquire only the five
+nativeArtifactProposals already fixed by upstream metadata; validate original
+bytes and bounded unpacking, without installation/execution or dependency
+fallbacks. Four immutable image roots and target OPS/Bun remain unqualified;
+no replacement version, image deletion or emulation is implicit.
+
+| Work | State | Acceptance |
+| --- | --- | --- |
+| Five pinned native inputs | completed (byte identity only) | Original SHA/size, bounded extraction, ARM64 ELF or every wheel member; no native execution |
+| Explicit architecture/path propagation | completed (preparation only; native route blocked) | Legacy schema1 remains AMD64; prepare helpers and call sites without enabling an unqualified ARM64 operational route |
+| Independent review | in progress | Frozen24 cases, manifest6293c6713f27dc64110a0a883f85ae31168c7a63dffb14d7d607400894acf510 |
+| Native catalog, CLI and full rehearsal | blocked | Four selected AMD64 images, untrusted target OPS/Bun and complete native qualification still required |
+
+Existing installation/target marker2 binds sourceRuntime, not architecture. Do
+not reinterpret it. New ARM64 persisted profiles/markers need a separately
+complete versioned contract after native catalog qualification. This iteration
+prepares reusable explicit platform paths while existing operational AMD64
+profile and target gates remain closed. No migration, stop, restore, application
+change or live qualification is authorized here.
+
+### Author verification and retained limitations
+
+All five authorized original native downloads and bounded offline ELF/wheel
+checks PASS;109278086download bytes, no execution/installation. Extracted Restic
+and Milvus hashes are recorded as archive-anchored observations. Native tooling
+remains mode0600 in the task-private stage. Test160migration +84restore cases
+PASS in normal and optimized Python; modes are not additional distinct coverage.
+A real synthetic OCI ARM64 archive passes the expansion verifier and fails when
+selected as AMD64. Six Bun unit tests PASS; one real OPS dispatch case is skipped
+because no target OPS binary is qualified/authorized for execution here.
+Twenty-six focused worker regressions PASS.
+
+The broader49-case worker suite has5failures/6errors in root-ownership/protected
+directory fixtures. The exact same11case IDs and error categories reproduce
+using predecessor69a97f57 worker bytes in memory. Do not report that suite green
+or use these existing environment-dependent failures as native qualification.
+The original failing author OCI assertion is retained privately: it expected a
+platform field that the canonical storage summary does not expose. The corrected
+assertion checks real root/allocation proof and opposite-architecture rejection;
+canonical engine/runtime guards were not changed to satisfy it.
+
+Current catalog, installer, profile validator, root installation/target guards
+and generated backup engine are byte-exact against69a97f57. Application main is
+unchanged at56782562a62351b9eb773b4543fac8493ad149af and clean. No OPS, migration,
+service control, live backup/restore or application operation was executed.
+Independent final immutable-source review remains pending at this checkpoint.
+
+The documentation/data/new-module privacy scan passes. Applying the Veryta
+document regex to all pre-existing worker source lines also matches compact
+Python inequality/colon syntax, not Matrix identifiers. These source hits were
+inspected; no operational or customer identifiers were introduced. Preserve
+that diagnostic instead of altering unrelated worker code to suppress it.

@@ -24,6 +24,8 @@ from store_capacity import GIB
 from oci_acquisition import acquisition_plan,acquisition_space
 from oci_image_storage import image_storage
 from images import manifest
+sys.path.insert(0,str(TASK/'restore'))
+from platform_contract import architecture
 
 
 def filesystem_check(work,run,witness=None,working=0,reserve=0):
@@ -34,8 +36,9 @@ def filesystem_check(work,run,witness=None,working=0,reserve=0):
         ['sudo','-n','python3','-B',str(TASK/'backup/engine/scripts/store_capacity.py'),str(request)],timeout=60))
 
 
-def preflight(images,work,run,target_ready=True,fetch=manifest):
-    plan=acquisition_plan(images,fetch)
+def preflight(images,work,run,target_ready=True,fetch=manifest,*,platform='linux/amd64'):
+    selected=architecture(platform)
+    plan=acquisition_plan(images,fetch,architecture=selected)
     observed=filesystem_check(work,run)
     percent=20
     if target_ready:
@@ -48,12 +51,13 @@ def preflight(images,work,run,target_ready=True,fetch=manifest):
         percent=reserve_percent(data['kubeletconfig'])
     space=acquisition_space(plan,observed['capacityBytes'],observed['availableBytes'],percent)
     require(space['sufficient'],'insufficient_preacquisition_image_storage')
-    result={**plan,**space,'filesystem':observed['filesystem']}
+    result={**plan,**space,'filesystem':observed['filesystem'],'platform':platform}
     save(Path(work)/'image-acquisition-plan.json',result)
     return result
 
 
 def check_remaining(plan,work,run):
+    architecture(plan.get('platform','linux/amd64'))
     remaining=plan.get('remainingWorkBytes',plan['workingBytes'])
     observed=filesystem_check(work,run,plan['filesystem'],working=remaining,reserve=plan['reserveBytes'])
     used=max(0,plan['availableBytes']-observed['availableBytes'])
@@ -66,7 +70,7 @@ def check_remaining(plan,work,run):
 
 
 def check_expansion(plan,archives,work,run):
-    image=image_storage(archives)
+    image=image_storage(archives,architecture=architecture(plan.get('platform','linux/amd64')))
     require(image['contentStoreUpperBoundBytes']<=plan['contentUpperBoundBytes'],'image_acquisition_descriptor_bound_exceeded')
     # Verify original bytes and snapshot allocation while content is still not
     # unpacked. Later restore also checks native staging and every source image.

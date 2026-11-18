@@ -34,7 +34,7 @@ for key in ['baseline', 'legacy-runtimes', 'operator-candidate']:
     with file.open('rb') as f:
         if hashlib.file_digest(f, 'sha256').hexdigest() != manifest['images/' + key + '.tar']['sha256']:
             raise ValueError('Image archive binding differs')
-    p.run('import-' + key, ['/usr/local/bin/k3s', 'ctr', '-n', 'k8s.io', 'images', 'import', '--platform', 'linux/amd64', str(file)], timeout=1200)
+    p.run('import-' + key, ['/usr/local/bin/k3s', 'ctr', '-n', 'k8s.io', 'images', 'import', '--platform', globals().get('TARGET_PLATFORM','linux/amd64'), str(file)], timeout=1200)
     p.state['imageImported-' + key] = True; p.save()
 if not p.state.get('addonsEnabled'):
     if globals().get('SAME_HOST_RESTORE',False):
