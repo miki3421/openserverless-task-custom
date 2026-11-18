@@ -81,3 +81,17 @@ unchanged. No real host command or application change is part of these tests.
 Source completion is not migration readiness. ARM64 catalogs, existing extra
 Kind workloads/PVC inventory, GPU/Ollama, connectivity, activation fencing,
 consistent final backup and operator-led rehearsal remain unexecuted/open.
+
+### Independent durability correction
+
+Exact0133b43a review HOLD retained:18frozen independent controls and46focused
+replays PASS, but the shared legacy save helper lacks parent-directory fsync.
+Supplemental3crash/durability controls frozen before correction, digest
+1f93dfba745dce55af7c22679093c04c1e8758f835afb7b456eb21380aacc465.
+A migrator-only durable_save now preserves original file fsync and synchronizes
+both the rename directory and its parent before returning. Journal/current
+persistence covers newly created run/migrate entries before the first stop.
+Any sync error prevents later phases; failure reporting is best-effort without
+claiming unavailable evidence. The shared legacy store helper remains byte-exact.
+Additional tests qualify file/rename/both-directory ordering and injected sync
+failure with zero host commands. Updated immutable review remains pending.

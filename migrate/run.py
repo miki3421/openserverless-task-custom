@@ -36,6 +36,21 @@ from acquisition import preflight as acquisition_preflight,check_remaining
 sys.path.insert(0,str(TASK/'restore'))
 import source_runtime
 
+def durable_save(path, value):
+    """Persist new migration evidence and its newly created run-directory entry.
+
+    Keep the shared legacy store helper unchanged. It fsyncs the replacement
+    file; this scope additionally fsyncs the rename parent and its parent before
+    any stop can proceed. Journal/current writes cover run and migrate creation.
+    """
+    save(path, value)
+    parent=Path(path).parent
+    for directory in (parent,parent.parent):
+        descriptor=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:os.fsync(descriptor)
+        finally:os.close(descriptor)
+
+
 def await_resource(k,args,predicate,work,label,timeout):
     """Wait for creation as well as readiness during asynchronous bootstrap."""
     deadline=time.monotonic()+timeout;last={}
@@ -49,7 +64,7 @@ def await_resource(k,args,predicate,work,label,timeout):
                 if predicate(value):return
             except ValueError:pass
         last={'stdout':p.stdout.decode(errors='replace'),'stderr':p.stderr.decode(errors='replace')};time.sleep(2)
-    save(Path(work)/(label+'-failure.private.json'),last);raise ValueError('target_'+label.replace('-','_')+'_timeout')
+    durable_save(Path(work)/(label+'-failure.private.json'),last);raise ValueError('target_'+label.replace('-','_')+'_timeout')
 
 def await_nodes(k,work,timeout=240):
     await_resource(k,['get','nodes'],lambda v:len(v.get('items',[]))==1,work,'node-registration',timeout)
@@ -89,7 +104,7 @@ def execute(r):
     run_id=uuid.uuid4().hex;work=root/('run-'+run_id);work.mkdir(mode=0o700)
     state={'status':'running','runId':run_id,'phase':'preflight','applicationRestoreVerified':False};store_lock=None
     def progress(phase,why):
-        state['phase']=phase;save(work/'journal.json',state);save(root/'current.json',{'runId':run_id})
+        state['phase']=phase;durable_save(work/'journal.json',state);durable_save(root/'current.json',{'runId':run_id})
         if not r['json']:print('OPS migrate: '+phase+' — '+why,flush=True)
     def command(label,args,timeout=600,env=None):
         with (work/(label+'.stdout.private')).open('xb')as out,(work/(label+'.stderr.private')).open('xb')as err:
@@ -122,7 +137,7 @@ def execute(r):
         target_release=json.loads((TASK/'migrate/releases/k3s-0.9.0.json').read_text())
         for key,path in [('ops',r['ops']),('bun',r['bun'])]:
             require(digest(regular(path,uid,False))==target_release['installedTools'][key],'qualified_'+key+'_required')
-        images=availability(target_release['images']);save(work/'image-availability.json',images)
+        images=availability(target_release['images']);durable_save(work/'image-availability.json',images)
         require(not images['missing'],'target_images_not_published')
         acquisition=acquisition_preflight(target_release['images'],work,command,target_ready=resuming)
         runtime = None
@@ -148,19 +163,19 @@ def execute(r):
             if runtime['containers'][-1]['wasRunning']:
                 from kind_adapter import KindConfig,cluster_identity,Runner
                 cluster_identity(KindConfig(source['kind']),Runner())
-            save(work/'source-runtime.private.json',runtime)
-            save(work/'restart-proposal.private.json',{'automaticRestart':False,
+            durable_save(work/'source-runtime.private.json',runtime)
+            durable_save(work/'restart-proposal.private.json',{'automaticRestart':False,
                  'containers':source_runtime.restart_candidates(runtime)})
         if r['check']:
-            state.update(status='check_passed',backupRunId=bundle['runId'],clusterMutation=False);save(work/'journal.json',state);print(json.dumps(state));return 0
+            state.update(status='check_passed',backupRunId=bundle['runId'],clusterMutation=False);durable_save(work/'journal.json',state);print(json.dumps(state));return 0
         progress('verify-selected-archive','Retrieve and verify the encrypted native set from the same completed backup generation.')
-        archive=hydrate_native(c);save(work/'selected-archive.private.json',archive);state['backupRunId']=archive['runId']
+        archive=hydrate_native(c);durable_save(work/'selected-archive.private.json',archive);state['backupRunId']=archive['runId']
         if not resuming:
             progress('fetch-pinned-installer','Download the pinned K3s binary, installer and certificate controller before stopping source containers.')
             for name,key in [('k3s','binary'),('install.sh','installer'),('cert-manager.yaml','certManager')]:
                 download(release[key]['url'],work/name,release[key]['sha256'],limit=256*1024**2)
             routes=json.loads(subprocess.check_output(['ip','-j','-4','route','show','default']));require(len(routes)==1,'one_primary_interface_required')
-            request=work/'install-request.json';save(request,{'uid':uid,'hostUuid':c['host']['uuid'],'address':c['host']['address'],
+            request=work/'install-request.json';durable_save(request,{'uid':uid,'hostUuid':c['host']['uuid'],'address':c['host']['address'],
                   'interface':routes[0]['dev'],'work':str(work),'runId':run_id,'backupRunId':archive['runId'],
                   'sourceRuntime':runtime})
             # Hydration/installer staging and concurrent source writes may have
@@ -168,12 +183,12 @@ def execute(r):
             # the full remaining image bound before source downtime begins.
             check_remaining(acquisition,work,command)
             progress('stop-source-containers','Stop explicitly selected external services, then Kind; keep Docker available.')
-            state['sourceStopStarted']=True;save(work/'journal.json',state)
+            state['sourceStopStarted']=True;durable_save(work/'journal.json',state)
             def stop(args):
                 require(current_plan()==plan,'external_stop_plan_changed')
                 source_runtime.native_command(args, lambda argv, **kw: command('stop-container-'+argv[-1],argv,timeout=330,env=kw['env']))
             require(current_plan()==plan,'external_stop_plan_changed')
-            source_runtime.stop_selected(runtime,stop,lambda value:save(work/'container-stop.private.json',value))
+            source_runtime.stop_selected(runtime,stop,lambda value:durable_save(work/'container-stop.private.json',value))
             progress('install-k3s','Create the fresh pinned K3s control plane on this host; the encrypted backup remains outside it.')
             command('install-k3s',['sudo','-n','python3','-B',TASK/'migrate/install.py',request],timeout=900)
             k=['sudo','-n','/usr/local/bin/k3s','kubectl','--kubeconfig=/etc/rancher/k3s/k3s.yaml']
@@ -191,14 +206,14 @@ def execute(r):
                 p=subprocess.run(['sudo','-n','python3','-B',str(TASK/'migrate/target.py'),'inspect'],capture_output=True)
                 if p.returncode==0:break
                 if attempt==89:
-                    save(work/'target-bootstrap-failure.private.json',{'stdout':p.stdout.decode(),'stderr':p.stderr.decode()});raise ValueError('empty_k3s_target_not_ready')
+                    durable_save(work/'target-bootstrap-failure.private.json',{'stdout':p.stdout.decode(),'stderr':p.stderr.decode()});raise ValueError('empty_k3s_target_not_ready')
                 time.sleep(2)
         else:
             progress('verify-prepared-target','Reuse only the exact bound empty target and verified software capsule; application restore has not started.')
         if runtime is not None:source_runtime.verify(runtime)
         progress('prepare-restore','Assemble verified 0.9.0 inputs and bind the new target to the exact selected native snapshot.')
         prep={**r,'repository':archive['repository'],'key':archive['passwordFile'],'snapshot':archive['snapshot'],'check':False}
-        prep_path=work/'prepare-request.json';save(prep_path,prep)
+        prep_path=work/'prepare-request.json';durable_save(prep_path,prep)
         command('prepare-restore',['python3','-B',TASK/'migrate/prepare.py',prep_path],timeout=14400)
         pointer=read(root/'prepared.json',uid);prepared=read(pointer['profile'],uid);target_tmp=Path(prepared['target']['opsHome'])/'tmp'
         regular(target_tmp/'kubeconfig',uid)
@@ -218,10 +233,13 @@ def execute(r):
         temporary=client.with_name('kubeconfig.'+uuid.uuid4().hex+'.tmp');temporary.write_bytes((target_tmp/'kubeconfig').read_bytes());temporary.chmod(0o600);temporary.replace(client)
         state.update(status='complete',applicationAcceptanceRequired=True,sourceDockerStoppedAndDisabled=runtime is None,sourceKindStopped=True,
                      dockerDaemonPreserved=runtime is not None,externalRestartAutomatic=False,targetVersion='0.9.0')
-        save(work/'journal.json',state);print(json.dumps(state));return 0
+        durable_save(work/'journal.json',state);print(json.dumps(state));return 0
     except Exception:
-        state['status']='failed';save(work/'journal.json',state);save(work/'failure.private.json',{'traceback':traceback.format_exc()})
-        print('OPS migrate stopped at '+state['phase']+'. Protected journal retained; subsequent phases were not executed.',file=sys.stderr);return 1
+        state['status']='failed';failure={'traceback':traceback.format_exc()}
+        for path,value in [(work/'journal.json',state),(work/'failure.private.json',failure)]:
+            try:durable_save(path,value)
+            except Exception:pass  # original durable stop fence remains authoritative
+        print('OPS migrate stopped at '+state['phase']+'. Available private evidence retained; subsequent phases were not executed.',file=sys.stderr);return 1
     finally:
         if store_lock is not None:os.close(store_lock)
         os.close(fd)

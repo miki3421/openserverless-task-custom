@@ -24,6 +24,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import stat
 import unittest
 from unittest.mock import patch,Mock
 
@@ -35,7 +36,7 @@ import source_runtime as S
 from test_source_runtime import fixture,K,A,B,C
 
 class KindOnlyFlow(unittest.TestCase):
-    def exercise(self,fail_stop=False,drift=False,check=False,retry=False,plan_drift=False):
+    def exercise(self,fail_stop=False,drift=False,check=False,retry=False,plan_drift=False,durability_failure=False):
         with tempfile.TemporaryDirectory() as directory:
             home=Path(directory);(home/'tmp').mkdir();(home/'tmp/kubeconfig').write_text('synthetic source')
             root=home/'migrate';root.mkdir(mode=0o700)
@@ -83,7 +84,11 @@ class KindOnlyFlow(unittest.TestCase):
                 return original(path,*args,**kw)
             def download(*args,**kwargs):
                 if plan_drift:(root/'host-services.json').write_text(json.dumps({'schemaVersion':1,'containers':[]}))
-            patches=[patch.object(run.os,'getuid',return_value=1000),patch.object(run.sys,'version_info',(3,12)),
+            real_fsync=os.fsync
+            def fsync(fd):
+                if durability_failure and stat.S_ISDIR(os.fstat(fd).st_mode):raise OSError('synthetic directory sync failure')
+                real_fsync(fd)
+            patches=[patch.object(run.os,'fsync',side_effect=fsync),patch.object(run.os,'getuid',return_value=1000),patch.object(run.sys,'version_info',(3,12)),
                 patch.object(run,'verified_store',return_value=config),patch.object(run,'selected',return_value=(None,bundle)),
                 patch.object(run,'acquire_operation',side_effect=lambda _:os.open(home/'lock',os.O_CREAT|os.O_RDWR,0o600)),
                 patch.object(run,'hardware_uuid',return_value='synthetic-host'),patch.object(run,'read',side_effect=read),
@@ -96,7 +101,10 @@ class KindOnlyFlow(unittest.TestCase):
                 patch.object(Path,'read_text',release),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO())]
             with contextlib.ExitStack() as stack:
                 for item in patches:stack.enter_context(item)
-                result=run.execute(request)
+                try:result=run.execute(request)
+                except OSError:
+                    if not durability_failure:raise
+                    result=1
                 if retry:
                     pointer=(root/'current.json').read_bytes();before=len(calls)
                     self.assertEqual(run.execute(request),1)
@@ -104,6 +112,7 @@ class KindOnlyFlow(unittest.TestCase):
                     self.assertEqual(len(calls),before)
             self.assertFalse(any('systemctl'in a or 'start'in a or 'disable'in a for a in calls))
             stop_ids=[a[-1] for a in calls if a[:3]==S.DOCKER and a[3]=='stop']
+            if durability_failure:return result,stop_ids,calls,{},installed
             pointer=json.loads((root/'current.json').read_text());journal=root/('run-'+pointer['runId'])/'journal.json'
             state=json.loads(journal.read_text());return result,stop_ids,calls,state,installed
     def test_successful_full_flow_preserves_docker_and_never_restarts_containers(self):
@@ -124,6 +133,11 @@ class KindOnlyFlow(unittest.TestCase):
         result,stops,calls,state,installed=self.exercise(drift=True)
         self.assertEqual(result,1);self.assertEqual(stops,[A,B,K]);self.assertEqual(len(installed),1)
         self.assertFalse(any(a[0]=='synthetic-ops' for a in calls))
+    def test_directory_sync_failure_prevents_every_host_command(self):
+        result,stops,calls,state,installed=self.exercise(durability_failure=True)
+        self.assertEqual(result,1);self.assertEqual(stops,[]);self.assertEqual(installed,[])
+        self.assertEqual(calls,[])
+
     def test_partial_stop_cannot_be_silently_resnapshotted_by_new_run(self):
         result,stops,calls,state,installed=self.exercise(fail_stop=True,retry=True)
         self.assertEqual(result,1);self.assertEqual(stops,[A,B]);self.assertEqual(installed,[])

@@ -30,6 +30,7 @@ import same_host
 import run
 import tempfile
 import os
+import stat
 from test_same_host import selected,marker,controllers
 
 K='a'*64; A='b'*64; B='c'*64; C='d'*64
@@ -136,6 +137,20 @@ class RuntimeBoundaries(unittest.TestCase):
         with self.assertRaises(ValueError):same_host.validate_marker(p,m)
         m['schemaVersion']=1
         with self.assertRaises(ValueError):same_host.validate_marker(p,m)
+    def test_evidence_file_and_both_directory_entries_are_synced_before_return(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);work=root/'run-synthetic';work.mkdir()
+            target=work/'source-runtime.private.json';events=[]
+            fsync=os.fsync;replace=os.replace
+            def sync(fd):
+                info=os.fstat(fd);events.append(('dir' if stat.S_ISDIR(info.st_mode) else 'file',info.st_ino));fsync(fd)
+            def rename(source,dest):events.append(('replace',0));replace(source,dest)
+            with patch.object(run.os,'fsync',side_effect=sync),patch.object(run.os,'replace',side_effect=rename):
+                run.durable_save(target,{'sourceStopStarted':True})
+            self.assertEqual([e[0] for e in events],['file','replace','dir','dir'])
+            self.assertEqual([e[1] for e in events[-2:]],[work.stat().st_ino,root.stat().st_ino])
+            self.assertEqual(target.stat().st_mode&0o777,0o600)
+
     def test_prior_partial_stop_requires_review_without_replacing_pointer(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);prior=root/('run-'+'f'*32);prior.mkdir()
