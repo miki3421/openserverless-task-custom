@@ -38,19 +38,24 @@ def fresh_target():
 def install(path):
     require(os.geteuid()==0,'administrator_required')
     uid=int(os.environ.get('SUDO_UID','0'));r=read(path,uid)
-    require(uid>0 and set(r)=={'uid','hostUuid','address','interface','work','runId','backupRunId'},'closed_install_request_required')
+    required={'uid','hostUuid','address','interface','work','runId','backupRunId'}
+    require(uid>0 and (set(r)==required or set(r)==required|{'sourceRuntime'}),'closed_install_request_required')
     require(r['uid']==uid and Path('/sys/class/dmi/id/product_uuid').read_text().strip().lower()==r['hostUuid'],'install_host_identity_mismatch')
     import ipaddress,re
     require(ipaddress.ip_address(r['address']).is_private and re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,14}',r['interface']),'explicit_private_network_required')
     require(all(re.fullmatch('[a-f0-9]{32}',r[k])for k in ('runId','backupRunId')),'explicit_generation_required')
     import importlib.util
     spec=importlib.util.spec_from_file_location('migration_same_host',TASK/'restore/same_host.py');module=importlib.util.module_from_spec(spec)
-    sys.path.insert(0,str(TASK/'restore'));spec.loader.exec_module(module);module.source_offline()
+    sys.path.insert(0,str(TASK/'restore'));spec.loader.exec_module(module)
+    runtime=r.get('sourceRuntime')
+    require('sourceRuntime' not in r or isinstance(runtime,dict),'source_runtime_proof_required')
+    module.source_offline(runtime=runtime)
     release=json.loads((TASK/'migrate/releases/local-k3s-installer.json').read_text());work=Path(r['work'])
     require(work.is_absolute() and not work.is_symlink() and work.stat().st_uid==uid and work.stat().st_mode&0o777==0o700,'protected_install_work_required')
     for name,key in [('k3s','binary'),('install.sh','installer')]:
         require(digest(regular(work/name,uid,False))==release[key]['sha256'],'pinned_installer_checksum_mismatch')
     identity={k:r[k]for k in ('uid','hostUuid','address','interface','runId','backupRunId')}
+    if runtime is not None:identity.update(schemaVersion=2,sourceRuntime=runtime)
     if MARKER.exists():
         require(read(MARKER,0)==identity,'foreign_install_marker')
         require(digest(regular('/usr/local/bin/k3s',0,False))==release['binary']['sha256'],'installed_k3s_checksum_mismatch')
@@ -58,6 +63,7 @@ def install(path):
     fresh_target()
     addresses=json.loads(subprocess.check_output(['ip','-j','address','show','dev',r['interface']]))
     require(any(a.get('local')==r['address'] for i in addresses for a in i['addr_info']),'target_network_changed')
+    module.source_offline(runtime=runtime)
     shutil.copyfile(work/'k3s','/usr/local/bin/k3s');Path('/usr/local/bin/k3s').chmod(0o755)
     save(MARKER,identity)
     env={'PATH':'/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','HOME':'/root','LANG':'C.UTF-8',

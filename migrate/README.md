@@ -113,26 +113,79 @@ replay a failed data restore or bypass the existing checkpoint review.
 
 `ops migrate --to=k3s` orchestrates the opt-in host-store rehearsal from a
 completed `ops backup` generation: verify the exact selection, hydrate its
-encrypted native set, download pinned inputs, stop and disable the selected
-Docker source, install fresh local K3s and cert-manager, prepare target CRDs and
-RBAC, and run the existing restore checks and restore. It does not require SSH
-to the local server. `--check` does not stop Docker or install a target. An
-already stopped and disabled Docker daemon is also supported; neither mode
-starts Docker for migration. An existing K3s target requires separate review.
+encrypted native set, stage pinned inputs, stop the selected Kind container,
+install fresh native K3s/cert-manager, prepare target CRDs/RBAC and run the
+existing restore checks and restore. Docker remains running. No Docker service,
+socket, restart policy, source data or installation is disabled or removed.
 
-This route is a Linux AMD64, single-host candidate. It requires the protected
-profile created by `ops backup prepare` and the exact completed store
-generation; source applications and native backends still need acceptance
-after restore. Failed phases retain private journals and stop subsequent work.
-It is not certified for production or other layouts by synthetic tests.
+For a fresh run, Docker must be reachable through its protected local Unix
+socket, with the exact source daemon, default context, container ID and Kind
+label. A remote context is rejected. By default another running container blocks
+migration. To include external services in the maintenance stop, provide the
+private mode0600 file `OPS_HOME/migrate/host-services.json` before the approved
+run. Its closed structure is:
 
-An already prepared target can be resumed only while it is independently
-verified empty of application data, with the same host, cluster UID, backup
-snapshot and verified capsule. Docker must remain stopped and disabled. Only
-descendant changes limited to migration wrappers/tests and Kubernetes prepare
-may refresh that profile's code pin; changes to restore workers require review.
-The previous profile is retained. Once application restore has started this
-path refuses automatic replay.
+```json
+{
+  "schemaVersion": 1,
+  "containers": [
+    {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "disposition": "retain-docker"
+    },
+    {
+      "id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "disposition": "move-to-k3s"
+    }
+  ]
+}
+```
+
+The IDs above are synthetic. Supply actual full IDs through the private file;
+never put operational values in source control. Entries define external stop
+order, e.g. application/bridge before its database. The selected Kind container
+is always last and cannot be listed as an external service. `keep-stopped` is
+allowed only for an already stopped container. Additional unselected stopped
+containers remain stopped and are inventoried; unselected running containers or
+another Kind cluster fail closed. No implicit wildcard selection is accepted.
+
+Before effects, the private runtime record freezes the complete container set,
+image identities, original running flags, restart policies and dispositions.
+Every stop rechecks the exact inventory. Partial failure stops the procedure;
+it never restarts or retries a container. `restart-proposal.private.json` lists
+only originally active `retain-docker` containers; it is evidence for a later
+reviewed step, not an automatic restart command. Kind, originally stopped and
+`move-to-k3s` containers remain stopped. Disposition does not back up or migrate
+external-service data or move Ollama by itself.
+
+The root installer independently rechecks this evidence against the local socket
+and daemon before effects. A version2 root target marker binds it to the selected
+archive/source and rechecks all containers stopped at restore preflight and each
+restore phase. Missing/malformed/version-drift proof fails closed. Existing
+version1 prepared targets and the isolated restore route retain their original
+Docker-stopped-and-disabled checks; no automatic marker or checkpoint upgrade.
+
+`--check` observes current identities but never stops a container, installs K3s,
+downloads software or changes runtime configuration. New runs do not start an
+unavailable Docker daemon. The legacy stopped-daemon preparation remains only
+under the unchanged explicit legacy proof. An existing unrelated K3s target or
+application restore checkpoint requires separate review.
+
+This route's software catalog remains a Linux AMD64, single-host candidate.
+The new Docker-preservation contract is locally qualified only; native ARM64
+catalogs, whole-host networking/GPU setup and actual restore acceptance remain
+open. The protected host-store generation and all existing archive, source,
+capacity, physical-host and empty-target gates remain required.
+
+An already prepared empty target can resume only with the same host, cluster
+UID, backup snapshot and verified capsule. Version2 requires the same live
+Docker daemon and exact stopped inventory; version1 requires daemon shutdown.
+Only descendant wrapper-only changes may refresh an old code pin; restore worker
+changes still require explicit checkpoint review. Once application restore has
+started, automatic replay remains refused.
+
+See [the whole-host sequence](host-migration-plan.md) for the separate Ollama,
+retained-service reconnection, acceptance and deliberate activation phases.
 
 Kubernetes prepare and restore explicitly use the prepared K3s client rather
 than an inherited kind context. Prepare failures propagate to the caller. At
@@ -165,7 +218,8 @@ ops restore
 The first command validates prerequisites and reads encrypted metadata. The
 second downloads software, populates the target containerd image cache and
 writes private restore settings. Neither deploys applications, imports source
-Kubernetes metadata or restores backend data. Docker remains disabled/stopped.
+Kubernetes metadata or restores backend data. The selected Kind source stays
+stopped under its original versioned runtime proof.
 The recovery repository and independent password file remain unchanged.
 
 By default, preparation finds the exact completed, encrypted-file-verified
@@ -213,8 +267,8 @@ claim that every individual hunk is mathematically minimal. No new operator
 build is required for this candidate.
 
 `releases/k3s-0.9.0.json` pins tools, target task source and image roots. Downloads
-use HTTPS and verified hashes. Image acquisition uses K3s containerd; Docker is never
-started. A reusable software capsule is assembled locally for the restore
+use HTTPS and verified hashes. Image acquisition uses K3s containerd; the
+preparation does not start or stop Docker. A reusable software capsule is assembled locally for the restore
 workers. Operators do not need a separately supplied offline kit.
 
 ## Acquisition capacity gates
@@ -226,7 +280,7 @@ or justify assuming cache reuse. The bound includes manifest/configuration
 metadata for unselected platforms, but selects Linux AMD64 layer content only.
 Unsupported descriptors and compression stop preparation.
 
-The bare Kind wrapper performs this check before stopping Docker; preparation
+The bare Kind wrapper performs this check before stopping source containers; preparation
 repeats it against the actual K3s target and its kubelet eviction/image-GC policy.
 Every fetch and export revalidates the same selected filesystem and its remaining
 work plus reserve. Only completed bounded stages reduce remaining work; unrelated

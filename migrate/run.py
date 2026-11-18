@@ -33,6 +33,8 @@ from store_driver import verified_store,selected,hydrate_native
 from assets import download
 from images import availability
 from acquisition import preflight as acquisition_preflight,check_remaining
+sys.path.insert(0,str(TASK/'restore'))
+import source_runtime
 
 def await_resource(k,args,predicate,work,label,timeout):
     """Wait for creation as well as readiness during asynchronous bootstrap."""
@@ -63,6 +65,20 @@ def resume_binding(pointer,p,bundle,c):
             p['source']['hostname']==p['target']['hostname']==c['host']['hostname'] and
             p['route']=='same-host-kind-010-to-k3s-090','prepared_target_backup_binding_changed')
 
+def previous_stop_requires_review(root, uid):
+    pointer=root/'current.json'
+    if not pointer.exists() and not pointer.is_symlink():return
+    prior=read(pointer,uid)
+    import re
+    require(set(prior)=={'runId'} and isinstance(prior['runId'],str) and
+            re.fullmatch('[a-f0-9]{32}',prior['runId']),'previous_migration_pointer_invalid')
+    state=read(root/('run-'+prior['runId'])/'journal.json',uid)
+    require('sourceStopStarted' not in state or type(state['sourceStopStarted']) is bool,
+            'previous_source_stop_requires_review')
+    require(not state.get('sourceStopStarted') or (root/'prepared.json').exists(),
+            'previous_source_stop_requires_review')
+
+
 def execute(r):
     os.umask(0o077);uid=os.getuid();home=Path(r['opsHome']);require(uid>0,'local_ops_owner_required')
     require(set(r)=={'to','check','json','repository','key','snapshot','ops','bun','bin','opsHome'} and type(r['check'])is bool and type(r['json'])is bool,'closed_migrate_request_required')
@@ -82,6 +98,7 @@ def execute(r):
         data=(work/(label+'.stdout.private')).read_bytes()
         require(len(data)<=16*1024**2,'command_output_budget');return data
     try:
+        previous_stop_requires_review(root,uid)
         progress('preflight','Verify the exact completed backup, physical host, source and immutable software inputs.')
         c=verified_store(home/'backup-store.json');destination,bundle=selected(c,require_metadata=False)
         store_lock=acquire_operation(c)
@@ -108,40 +125,55 @@ def execute(r):
         images=availability(target_release['images']);save(work/'image-availability.json',images)
         require(not images['missing'],'target_images_not_published')
         acquisition=acquisition_preflight(target_release['images'],work,command,target_ready=resuming)
-        units=['docker.service','docker.socket']
-        states=[subprocess.run(['systemctl','is-active',name],capture_output=True,text=True).stdout.strip()for name in units]
-        source_online=states==['active','active']
-        require(not(resuming and source_online),'prepared_target_requires_stopped_source')
-        if not source_online:
-            require(states==['inactive','inactive'] and all(subprocess.run(['systemctl','is-enabled',name],capture_output=True,text=True).stdout.strip()=='disabled'for name in units),'source_docker_state_ambiguous')
-            require(not command('offline-docker-tasks',['sudo','-n','/usr/bin/ctr','--address','/run/containerd/containerd.sock','--namespace','moby','tasks','list','-q']).strip(),'source_tasks_still_running')
-        docker=['docker','--context',s['docker_context']]
-        if source_online:
-            info=json.loads(command('inspect-source',docker+['inspect',s['container_id']]))[0]
-            require(info['Id']==s['container_id'] and info['State']['Running'] and info['Config']['Labels'].get('io.x-k8s.kind.cluster')==s['kind_cluster'],'source_container_changed')
-            require(command('running-containers',docker+['ps','-q','--no-trunc']).decode().split()==[s['container_id']],'foreign_running_docker_workload')
-            require(command('docker-daemon',docker+['info','--format','{{.ID}}']).decode().strip()==s['docker_daemon_id'],'docker_daemon_identity_changed')
-            from kind_adapter import KindConfig,cluster_identity,Runner
-            cluster_identity(KindConfig(source['kind']),Runner())
+        runtime = None
+        if resuming and observed['marker'].get('schemaVersion') == 1:
+            # Already prepared legacy targets keep their original daemon-off fence.
+            import same_host
+            same_host.source_offline()
+        elif resuming:
+            require(observed['marker'].get('schemaVersion') == 2, 'source_runtime_proof_required')
+            runtime = source_runtime.validate_runtime(observed['marker'].get('sourceRuntime'))
+            require(runtime['kindContainerId'] == s['container_id'] and
+                    runtime['dockerDaemonId'] == s['docker_daemon_id'] and
+                    runtime['dockerContext'] == s['docker_context'] and
+                    runtime['kindCluster'] == s['kind_cluster'], 'prepared_source_runtime_changed')
+            source_runtime.verify(runtime)
+        else:
+            plan_path = root/'host-services.json'
+            def current_plan():
+                return read(plan_path,uid) if plan_path.exists() or plan_path.is_symlink() else {'schemaVersion':1,'containers':[]}
+            plan = current_plan()
+            runtime = source_runtime.freeze(s,source_runtime.observe(),plan)
+            source_runtime.verify(runtime,all_stopped=False)
+            if runtime['containers'][-1]['wasRunning']:
+                from kind_adapter import KindConfig,cluster_identity,Runner
+                cluster_identity(KindConfig(source['kind']),Runner())
+            save(work/'source-runtime.private.json',runtime)
+            save(work/'restart-proposal.private.json',{'automaticRestart':False,
+                 'containers':source_runtime.restart_candidates(runtime)})
         if r['check']:
             state.update(status='check_passed',backupRunId=bundle['runId'],clusterMutation=False);save(work/'journal.json',state);print(json.dumps(state));return 0
         progress('verify-selected-archive','Retrieve and verify the encrypted native set from the same completed backup generation.')
         archive=hydrate_native(c);save(work/'selected-archive.private.json',archive);state['backupRunId']=archive['runId']
         if not resuming:
-            progress('fetch-pinned-installer','Download the pinned K3s binary, installer and certificate controller before stopping Docker.')
+            progress('fetch-pinned-installer','Download the pinned K3s binary, installer and certificate controller before stopping source containers.')
             for name,key in [('k3s','binary'),('install.sh','installer'),('cert-manager.yaml','certManager')]:
                 download(release[key]['url'],work/name,release[key]['sha256'],limit=256*1024**2)
             routes=json.loads(subprocess.check_output(['ip','-j','-4','route','show','default']));require(len(routes)==1,'one_primary_interface_required')
             request=work/'install-request.json';save(request,{'uid':uid,'hostUuid':c['host']['uuid'],'address':c['host']['address'],
-                  'interface':routes[0]['dev'],'work':str(work),'runId':run_id,'backupRunId':archive['runId']})
+                  'interface':routes[0]['dev'],'work':str(work),'runId':run_id,'backupRunId':archive['runId'],
+                  'sourceRuntime':runtime})
             # Hydration/installer staging and concurrent source writes may have
             # reduced free space since initial metadata inspection. Revalidate
             # the full remaining image bound before source downtime begins.
             check_remaining(acquisition,work,command)
-            progress('stop-docker','Stop the verified kind source, then stop and disable Docker service and socket.')
-            if source_online:
-                command('stop-source',docker+['stop','--time','300',s['container_id']],timeout=330)
-                command('disable-docker',['sudo','-n','systemctl','disable','--now','docker.service','docker.socket'])
+            progress('stop-source-containers','Stop explicitly selected external services, then Kind; keep Docker available.')
+            state['sourceStopStarted']=True;save(work/'journal.json',state)
+            def stop(args):
+                require(current_plan()==plan,'external_stop_plan_changed')
+                source_runtime.native_command(args, lambda argv, **kw: command('stop-container-'+argv[-1],argv,timeout=330,env=kw['env']))
+            require(current_plan()==plan,'external_stop_plan_changed')
+            source_runtime.stop_selected(runtime,stop,lambda value:save(work/'container-stop.private.json',value))
             progress('install-k3s','Create the fresh pinned K3s control plane on this host; the encrypted backup remains outside it.')
             command('install-k3s',['sudo','-n','python3','-B',TASK/'migrate/install.py',request],timeout=900)
             k=['sudo','-n','/usr/local/bin/k3s','kubectl','--kubeconfig=/etc/rancher/k3s/k3s.yaml']
@@ -163,6 +195,7 @@ def execute(r):
                 time.sleep(2)
         else:
             progress('verify-prepared-target','Reuse only the exact bound empty target and verified software capsule; application restore has not started.')
+        if runtime is not None:source_runtime.verify(runtime)
         progress('prepare-restore','Assemble verified 0.9.0 inputs and bind the new target to the exact selected native snapshot.')
         prep={**r,'repository':archive['repository'],'key':archive['passwordFile'],'snapshot':archive['snapshot'],'check':False}
         prep_path=work/'prepare-request.json';save(prep_path,prep)
@@ -170,17 +203,21 @@ def execute(r):
         pointer=read(root/'prepared.json',uid);prepared=read(pointer['profile'],uid);target_tmp=Path(prepared['target']['opsHome'])/'tmp'
         regular(target_tmp/'kubeconfig',uid)
         env={**os.environ,'OPS_HOME':str(home),'OPS_ROOT':str(TASK),'OPS_TMP':str(target_tmp),'KUBECONFIG':str(target_tmp/'kubeconfig'),'PYTHONDONTWRITEBYTECODE':'1'}
+        if runtime is not None:source_runtime.verify(runtime)
         progress('prepare-kubernetes','Apply the target CRDs and RBAC through the existing OPS task.')
         command('prepare-kubernetes',[r['ops'],'setup','kubernetes','prepare'],env=env)
+        if runtime is not None:source_runtime.verify(runtime)
         progress('restore-preflight','Verify archive, target identity and every required restore capability.')
         command('restore-check',[r['ops'],'restore','--check'],env=env,timeout=1800)
+        if runtime is not None:source_runtime.verify(runtime)
         progress('restore','Restore platform definitions, credentials and native data; reconcile IAM after the final data restore.')
         command('restore',[r['ops'],'restore'],env=env,timeout=14400)
         progress('sync-client','Select the new cluster client while preserving the original kind client for rollback.')
         client=home/'tmp/kubeconfig';regular(client,uid)
         previous=work/'source-client-before-switch.private.yaml';previous.write_bytes(client.read_bytes());previous.chmod(0o600)
         temporary=client.with_name('kubeconfig.'+uuid.uuid4().hex+'.tmp');temporary.write_bytes((target_tmp/'kubeconfig').read_bytes());temporary.chmod(0o600);temporary.replace(client)
-        state.update(status='complete',applicationAcceptanceRequired=True,sourceDockerStoppedAndDisabled=True,targetVersion='0.9.0')
+        state.update(status='complete',applicationAcceptanceRequired=True,sourceDockerStoppedAndDisabled=runtime is None,sourceKindStopped=True,
+                     dockerDaemonPreserved=runtime is not None,externalRestartAutomatic=False,targetVersion='0.9.0')
         save(work/'journal.json',state);print(json.dumps(state));return 0
     except Exception:
         state['status']='failed';save(work/'journal.json',state);save(work/'failure.private.json',{'traceback':traceback.format_exc()})

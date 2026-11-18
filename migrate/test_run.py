@@ -29,6 +29,7 @@ from unittest import mock
 
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import run
+import source_runtime
 
 class MigrationBoundary(unittest.TestCase):
     def test_prepared_resume_requires_exact_snapshot_target_and_host(self):
@@ -62,7 +63,16 @@ class MigrationBoundary(unittest.TestCase):
             bundle={'source':{'hostUuid':'synthetic-host','clusterUid':'synthetic-cluster'},'runId':'b'*32,'docker':{'archiveCount':2,'sourceRecovered':True}}
             calls=[]
             def check_output(args,*a,**kw):
-                self.assertEqual(args[0],'git');return b''
+                calls.append(args)
+                if args[0]=='git':return b''
+                self.assertEqual(args[:3],source_runtime.DOCKER)
+                if offline:raise subprocess.CalledProcessError(1,args)
+                if 'info' in args:return b'synthetic-daemon\n'
+                if 'ps' in args:return (source['container_id']+'\n'+('f'*64+'\n' if foreign else '')).encode()
+                if 'inspect' in args:
+                    rows=[{'id':ident,'image':'sha256:'+'c'*64,'running':True,'paused':False,'restarting':False,'restartPolicy':'unless-stopped','kindCluster':'synthetic-kind' if ident==source['container_id'] else None} for ident in args[args.index(source_runtime.FORMAT)+1:]]
+                    return ('\n'.join(json.dumps(row) for row in rows)).encode()
+                self.fail('unexpected native command')
             def subprocess_run(args,stdout=None,stderr=None,**kw):
                 calls.append(args)
                 if stdout is None:return mock.Mock(returncode=0,stdout=('disabled\n'if 'is-enabled'in args else'inactive\n')if offline else'active\n')
@@ -72,7 +82,7 @@ class MigrationBoundary(unittest.TestCase):
                 else:data=b'synthetic-daemon\n'
                 stdout.write(data);return mock.Mock(returncode=0)
             hydrate=mock.Mock();download=mock.Mock()
-            patches=[mock.patch.object(run.sys,'version_info',(3,12)),mock.patch.object(run.os,'getuid',return_value=1000),mock.patch.object(run,'acquire_operation',side_effect=lambda c:os.open(Path(tmp)/'store.lock',os.O_CREAT|os.O_RDWR,0o600)),mock.patch.object(run,'verified_store',return_value=c),mock.patch.object(run,'selected',return_value=(None,bundle)),mock.patch.object(run,'hardware_uuid',return_value='synthetic-host'),mock.patch.object(run,'availability',return_value={'missing':[]}),mock.patch.object(run,'acquisition_preflight',side_effect=ValueError('insufficient_preacquisition_image_storage')if no_space else None),mock.patch.object(run,'read',return_value={'kind':{'source':source}}),mock.patch.object(run,'regular',side_effect=lambda p,*a:Path(p)),mock.patch.object(run,'digest',return_value='qualified'),mock.patch.object(run.subprocess,'check_output',side_effect=check_output),mock.patch.object(run.subprocess,'run',side_effect=subprocess_run),mock.patch('kind_adapter.KindConfig'),mock.patch('kind_adapter.cluster_identity'),mock.patch.object(run,'hydrate_native',hydrate),mock.patch.object(run,'download',download),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO())]
+            patches=[mock.patch.object(source_runtime,'local_socket'),mock.patch.object(run.sys,'version_info',(3,12)),mock.patch.object(run.os,'getuid',return_value=1000),mock.patch.object(run,'acquire_operation',side_effect=lambda c:os.open(Path(tmp)/'store.lock',os.O_CREAT|os.O_RDWR,0o600)),mock.patch.object(run,'verified_store',return_value=c),mock.patch.object(run,'selected',return_value=(None,bundle)),mock.patch.object(run,'hardware_uuid',return_value='synthetic-host'),mock.patch.object(run,'availability',return_value={'missing':[]}),mock.patch.object(run,'acquisition_preflight',side_effect=ValueError('insufficient_preacquisition_image_storage')if no_space else None),mock.patch.object(run,'read',return_value={'kind':{'source':source}}),mock.patch.object(run,'regular',side_effect=lambda p,*a:Path(p)),mock.patch.object(run,'digest',return_value='qualified'),mock.patch.object(run.subprocess,'check_output',side_effect=check_output),mock.patch.object(run.subprocess,'run',side_effect=subprocess_run),mock.patch('kind_adapter.KindConfig'),mock.patch('kind_adapter.cluster_identity'),mock.patch.object(run,'hydrate_native',hydrate),mock.patch.object(run,'download',download),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO())]
             with contextlib.ExitStack()as stack:
                 for patch in patches:stack.enter_context(patch)
                 # Read only the two real checked-in release files; config reads
@@ -88,7 +98,7 @@ class MigrationBoundary(unittest.TestCase):
                 return result
     def test_check_leaves_source_and_target_untouched(self):self.assertEqual(self.exercise(),0)
     def test_foreign_running_docker_workload_blocks_migration(self):self.assertEqual(self.exercise(True),1)
-    def test_disabled_docker_is_not_started_or_queried(self):self.assertEqual(self.exercise(offline=True),0)
+    def test_unavailable_docker_is_not_started(self):self.assertEqual(self.exercise(offline=True),1)
     def test_insufficient_image_capacity_stops_before_docker_or_native_hydration(self):self.assertEqual(self.exercise(no_space=True),1)
 
 if __name__=='__main__':unittest.main()

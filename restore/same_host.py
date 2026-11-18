@@ -85,7 +85,10 @@ def workload_pins(rows):
 def validate_marker(profile, marker):
     expected = {'schemaVersion', 'role', 'hostUuid', 'hostname', 'sourceClusterUid', 'sourceKindContainerId',
                 'targetClusterUid', 'snapshot', 'network', 'workloads', 'serviceFiles', 'preparedNamespaceUid'}
-    require(set(marker) == expected and marker['schemaVersion'] == 1 and
+    version=marker.get('schemaVersion')
+    require(type(version) is int and version in (1,2),'same_host_target_marker_required')
+    if version == 2:expected.add('sourceRuntime')
+    require(set(marker) == expected and
             marker['role'] == 'same-host-kind-to-k3s-restore-target', 'same_host_target_marker_required')
     source, target = profile['source'], profile['target']
     require(marker['hostUuid'] == source['hostUuid'] == target['hostUuid'] and
@@ -97,10 +100,17 @@ def validate_marker(profile, marker):
             'same_host_marker_identity_mismatch')
     require(set(marker['serviceFiles']) == {'/etc/systemd/system/k3s.service', '/etc/systemd/system/k3s.service.env'},
             'standard_k3s_service_files_required')
+    if version == 2:
+        import source_runtime
+        runtime=source_runtime.validate_runtime(marker['sourceRuntime'])
+        require(runtime['kindContainerId'] == source['kindContainerId'],'same_host_source_runtime_mismatch')
     return marker
 
 
-def source_offline(execute=subprocess.check_output):
+def source_offline(execute=subprocess.check_output, *, runtime=None):
+    if runtime is not None:
+        import source_runtime
+        return source_runtime.verify(runtime)
     for unit in ('docker.service', 'docker.socket'):
         # is-active/is-enabled intentionally return nonzero for the required state.
         for command, state in [('is-active', 'inactive'), ('is-enabled', 'disabled')]:
@@ -184,7 +194,7 @@ def validate_layout(profile, marker, read, allow_unprepared=False):
 
 def preflight(profile, marker, read, allow_unprepared=False):
     validate_marker(profile, marker)
-    source_offline()
+    source_offline(runtime=marker.get('sourceRuntime'))
     for name, expected in marker['serviceFiles'].items():
         regular(name, 0, private=False)
         require(digest(name) == expected, 'k3s_service_configuration_changed')

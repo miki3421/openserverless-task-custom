@@ -52,6 +52,7 @@ def main(request_path):
     require(sys.platform=='linux'and os.uname().machine=='x86_64','qualified_linux_amd64_required')
     marker=private_json('/etc/ops-restore-target.private.json',0)
     same_host_route=p['route']==same_host.ROUTE
+    source_runtime_proof=marker.get('sourceRuntime') if same_host_route else None
     if same_host_route:
         require(Path(request['profile']).parent==Path(t['opsHome']),'selected_target_ops_profile_mismatch')
         same_host.validate_marker(p,marker)
@@ -156,7 +157,7 @@ def main(request_path):
         save(root/'dns-verification.json',dns);state['completed'].append('prepare-service-dns')
         for phase in PHASES:
             require_headroom(storage)
-            if same_host_route:same_host.source_offline()
+            if same_host_route:same_host.source_offline(runtime=source_runtime_proof)
             progress(phase);run('phase-'+phase,['python3','-I',str(TASK/'upgrade/adapters/driver.py'),str(root/'configuration.json'),phase],timeout=3600)
             state['completed'].append(phase)
             if phase=='final-iam':state['finalIamVerified']=True

@@ -39,6 +39,21 @@ def read(args):
     return json.loads(raw)
 
 
+def installation_runtime(target, host_uuid):
+    runtime=None
+    install_marker=Path('/etc/ops-migrate-install.private.json')
+    if install_marker.exists() or install_marker.is_symlink():
+        installed=private_json(install_marker,0)
+        if 'schemaVersion' in installed or 'sourceRuntime' in installed:
+            require(set(installed)=={'schemaVersion','uid','hostUuid','address','interface','runId','backupRunId','sourceRuntime'} and
+                    type(installed['schemaVersion']) is int and installed['schemaVersion']==2 and
+                    installed['hostUuid']==host_uuid and installed['address']==target['address'] and
+                    installed['interface']==target['network']['interface'],'source_runtime_installation_proof_required')
+            import source_runtime
+            runtime=source_runtime.validate_runtime(installed['sourceRuntime'])
+    return runtime
+
+
 def inspect():
     require(os.getuid() == 0, 'local_administrator_required')
     require(sys.platform == 'linux' and os.uname().machine == 'x86_64', 'qualified_linux_amd64_required')
@@ -75,7 +90,9 @@ def inspect():
               'serviceFiles': {}}
     for name in ('/etc/systemd/system/k3s.service', '/etc/systemd/system/k3s.service.env'):
         regular(name, 0, private=False); marker['serviceFiles'][name] = digest(name)
-    same_host.source_offline()
+    runtime=installation_runtime(target,uid)
+    if runtime is not None:marker.update(schemaVersion=2,sourceRuntime=runtime)
+    same_host.source_offline(runtime=runtime)
     require(not Path('/etc/rancher/k3s/config.yaml').exists() and not Path('/etc/rancher/k3s/config.yaml.d').exists(),
             'nonstandard_k3s_configuration_requires_qualification')
     same_host.validate_layout({'target': target}, marker, read, allow_unprepared=True)
