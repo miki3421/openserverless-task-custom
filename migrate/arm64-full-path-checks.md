@@ -210,7 +210,7 @@ no main merge or additional download/operation is implied.
 
 ## Native byte staging and explicit restore paths — 2026-11-18
 
-State: **in progress; byte staging completed, operational ARM64 blocked**.
+State: **bounded preparation completed and independently reviewed; operational ARM64 blocked**.
 The operator explicitly authorized acquiring the missing native inputs. The
 closed five-input manifest is `releases/arm64-native-inputs.json`, not a target
 release catalog. `stage_native_artifacts.py` is offline-only: no network, tool
@@ -249,3 +249,10 @@ Still blocked: the four selected AMD64 image roots, target OPS/Bun provenance,
 full image layer closure, source architecture proof, native ABI/imports and
 isolated complete rehearsal. No role is removed, no emulation/version change or
 mutable-tag replacement is introduced. Operational phases2..8 remain NOT_STARTED.
+
+Independent preparation GO on immutable source9bfbbd843ce3e6f12c16d2289b37e2f1a5a3d94c:
+receipt e1616885157ff2534cad7b838950a9661c68cad760b12df029405655302f69e6.
+Twenty-four independent preparation controls PASS normal/-O,19focused replays
+PASS and all5original inputs/extractions independently crosschecked. This does
+not satisfy deferred positive ARM profile/marker/native/ABI/full-rehearsal
+aspects; see the current host plan for exact retained limitations.

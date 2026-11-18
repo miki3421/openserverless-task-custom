@@ -151,7 +151,7 @@ and operational predecessor7a2d294 are unchanged by this documentation closeout.
 
 ## ARM64 artifact and restore-path iteration — 2026-11-18
 
-State: **in progress**. Operator explicitly requests the missing ARM64 artifacts
+State: **completed for bounded preparation; native migration remains blocked**. Operator explicitly requests the missing ARM64 artifacts
 and restore-path preparation on this dedicated branch. Acquire only the five
 nativeArtifactProposals already fixed by upstream metadata; validate original
 bytes and bounded unpacking, without installation/execution or dependency
@@ -162,7 +162,7 @@ no replacement version, image deletion or emulation is implicit.
 | --- | --- | --- |
 | Five pinned native inputs | completed (byte identity only) | Original SHA/size, bounded extraction, ARM64 ELF or every wheel member; no native execution |
 | Explicit architecture/path propagation | completed (preparation only; native route blocked) | Legacy schema1 remains AMD64; prepare helpers and call sites without enabling an unqualified ARM64 operational route |
-| Independent review | in progress | Frozen24 cases, manifest6293c6713f27dc64110a0a883f85ae31168c7a63dffb14d7d607400894acf510 |
+| Independent review | completed (GO preparation only) | Frozen24 cases, manifest6293c6713f27dc64110a0a883f85ae31168c7a63dffb14d7d607400894acf510 |
 | Native catalog, CLI and full rehearsal | blocked | Four selected AMD64 images, untrusted target OPS/Bun and complete native qualification still required |
 
 Existing installation/target marker2 binds sourceRuntime, not architecture. Do
@@ -204,3 +204,37 @@ document regex to all pre-existing worker source lines also matches compact
 Python inequality/colon syntax, not Matrix identifiers. These source hits were
 inspected; no operational or customer identifiers were introduced. Preserve
 that diagnostic instead of altering unrelated worker code to suppress it.
+
+### Independent preparation closeout
+
+Exact source9bfbbd843ce3e6f12c16d2289b37e2f1a5a3d94c received independent
+**GO for artifact/source preparation only**. Receipt SHA256
+e1616885157ff2534cad7b838950a9661c68cad760b12df029405655302f69e6.
+Frozen24preparation/negative/default/path controls PASS normal and optimized
+(same24, not48);19focused author cases independently replayed PASS. All five
+original input SHA/sizes, extracted Restic/Milvus ELF and inner hashes, two
+PyMongo ARM64 native members and neutral dnspython were independently verified
+without execution. Nine current provenance hashes match; historical proofs and
+all original operational catalog/profile/target/engine fences remain unchanged.
+
+Two initial independent harness assertion errors were corrected and retained:
+legacy boolean-schema behavior was overasserted outside the new source-owned
+platform gate, and a guessed refresh error string was replaced with the actual
+worker-delta denial oracle. No source was changed to satisfy these assertions.
+The11broader worker failures remain disclosed and are not claimed green.
+
+This documentation-only closeout preserves reviewed runtime source9bfbbd84.
+Publish the dedicated branch only; do not merge main. Positive versioned ARM64
+profile/archive/root-marker lifecycle, target OPS/Bun and four native image
+replacements, native ABI and complete isolated rehearsal remain BLOCKED/NOT_RUN.
+The already downloaded configs provide no immutable revision label for the
+three legacy runtime source images; native replacement provenance still needs
+to be established, not guessed from a mutable nightly tag. This observation
+does not establish that compatible native variants are unavailable.
+
+One task-private artifact area retains original inputs, verified non-executable
+files, download/review receipts and minimal passing/original-failure evidence
+until native qualification and accepted handoff (or cancellation). Synthetic
+fixtures auto-clean; no shared cache, service, model or application data is
+removed. Native byte identity, published source and migration readiness remain
+separate results. Operational phases2..8 are still not started.
