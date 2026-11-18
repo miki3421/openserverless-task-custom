@@ -130,6 +130,6 @@ Operator authorizes ARM64 qualification and preparation of complete-path checks,
 without migration/service stop/application changes. The offline identity audit
 and [complete-path matrix](arm64-full-path-checks.md) are being qualified on this
 same branch. Existing AMD64 operational catalogs and all source/restore guards
-remain unchanged. New artifact metadata download approval is pending; no network
-artifact acquisition or implicit new client/catalog selection. The previous
+remain unchanged. The exact metadata-only batch24800d78 is explicitly approved and in progress;
+no binary/layer download, installation or implicit new client/catalog selection. The previous
 phase1source qualification remains valid, not a native ARM64 acceptance claim.

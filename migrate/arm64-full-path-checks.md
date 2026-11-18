@@ -124,5 +124,32 @@ implementation, manifest digest
 440f340d945e4564b502ad0f94df6543d0afba5108c57ce55628856b5ea2bacb.
 Final independent audit review is pending. Current source/catalog hashes and
 original predecessor/durability evidence are retained separately; no native
-ARM64 migration acceptance is inferred. The metadata-only request is pending
-operator approval; no network artifact input was acquired.
+ARM64 migration acceptance is inferred. At the initial checkpoint the metadata-only request was pending approval;
+no network artifact input had been acquired.
+
+### Independent wheel-content correction
+
+Candidate39252265 has an independent HOLD:16frozen cases PASS;2FAIL showed a
+pure-any wheel containing an extensionless ELF and an ARM64 .so alongside an
+AMD64 .so.1 incorrectly accepted by extension-only scanning. Original fixtures,
+result and HOLD receipt remain retained (digest
+9c8bc7d57d1e44cb2267f87f69d0cfed8ed0265a13ee6126b942177ea089c089).
+The correction reads a bounded prefix of every non-directory ZIP member,
+rejects any ELF in pure-any wheels and verifies every ELF as ARM64 regardless
+filename. Existing .so missing-ELF rejection and size/hash/ZIP guards remain.
+Explicit absolute tool paths are enforced in the API as well as CLI. No native
+code is executed and no operational capability or platform catalog is changed.
+New independent immutable rerun is pending on the corrected candidate.
+Author141migration +84restore cases now PASS in normal and optimized modes
+(225distinct);18new audit cases include both wheel-content regressions.
+
+### Metadata acquisition authorization
+
+Operator explicitly approves the closed metadata-only batch, request digest
+24800d7817db086227c0ca235bb3597c2a4446c4e5c667b8ca9c4493dd9a876b.
+State:in progress. Read only the49original image roots, unique ARM children and
+configuration blobs plus5named primary checksum/release/distribution documents;
+128MiB/512request ceilings. No mutable-tag resolution, image layers, executables,
+models, installation or service changes. Original content-addressed bytes and a
+closed receipt remain private. This does not authorize the next binary/build or
+operational batch. Metadata failures stay explicit; no version/digest substitution.

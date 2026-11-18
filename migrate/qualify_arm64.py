@@ -118,6 +118,7 @@ def image_identity(row,metadata):
 def tool_identity(path,expected):
     require(isinstance(expected,str) and re.fullmatch('[a-f0-9]{64}',expected),'trusted_tool_pin_required')
     require(path is not None,'tool_missing')
+    require(Path(path).is_absolute(),'explicit_tool_path_required')
     path=regular(path,512*1024**2)
     try:return verify_executable(path,expected,'arm64')
     except ValueError:raise ValueError('tool_pin_or_architecture_mismatch') from None
@@ -140,10 +141,11 @@ def wheel_identity(row,directory):
             names.add(info.filename);total+=info.file_size
             require(total<=64*1024**2 and len(names)<=4096,'wheel_expansion_budget_exceeded')
             require((info.external_attr>>16)&0o170000 in (0,0o100000,0o040000),'unsafe_wheel_member')
-            if info.filename.endswith('.so'):
+            if info.is_dir():continue
+            with archive.open(info) as stream:header=stream.read(20)
+            if header.startswith(b'\x7fELF') or info.filename.endswith('.so'):
                 native_count+=1
                 require(not pure and info.file_size<=32*1024**2,'wheel_native_member_unexpected')
-                with archive.open(info) as stream:header=stream.read(20)
                 require(len(header)==20 and header[:6]==b'\x7fELF\x02\x01' and int.from_bytes(header[18:20],'little')==183,'wheel_native_member_not_arm64')
         require(pure or native_count>0,'wheel_native_member_missing')
     return {'nativeImportExecuted':False,'platformIndependent':pure}

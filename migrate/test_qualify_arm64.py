@@ -134,6 +134,23 @@ class OfflineArm64Audit(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError,'native_member_not_arm64'):Q.wheel_identity(row,root)
             row['url']=row['url'].replace('aarch64','x86_64')
             with self.assertRaisesRegex(ValueError,'wheel_not_arm64'):Q.wheel_identity(row,root)
+    def test_pure_any_wheel_cannot_hide_elf_without_native_extension(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);name='dnspython-2.9.0-py3-none-any.whl';path=root/name
+            with zipfile.ZipFile(path,'w') as archive:archive.writestr('dns/native-helper',elf())
+            row={'name':'dnspython','url':'https://example.invalid/'+name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size}
+            with self.assertRaisesRegex(ValueError,'native_member_unexpected'):Q.wheel_identity(row,root)
+    def test_foreign_elf_so_version_suffix_cannot_hide_behind_valid_arm_so(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);name='pymongo-4.18.2-cp312-cp312-manylinux2014_aarch64.whl';path=root/name
+            with zipfile.ZipFile(path,'w') as archive:
+                archive.writestr('bson/_cbson.so',elf());archive.writestr('bson/libforeign.so.1',elf(62))
+            row={'name':'pymongo','url':'https://example.invalid/'+name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size}
+            with self.assertRaisesRegex(ValueError,'native_member_not_arm64'):Q.wheel_identity(row,root)
+    def test_api_relative_tool_path_is_rejected_before_file_access(self):
+        with patch.object(Q,'regular',side_effect=AssertionError('relative file read')):
+            with self.assertRaisesRegex(ValueError,'explicit_tool_path'):Q.tool_identity('ops','a'*64)
+
     def test_source_architecture_blocker_is_recorded_without_edit(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);release,installer,tools=fixture(root);p=root/'migrate/target.py';p.parent.mkdir();p.write_text("machine == 'x86_64'")
