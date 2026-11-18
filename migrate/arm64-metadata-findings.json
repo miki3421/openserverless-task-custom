@@ -1,0 +1,414 @@
+{
+  "schemaVersion": 1,
+  "status": "blocked",
+  "requestedPlatform": "linux/arm64",
+  "sourceRevision": "39709c5f52f5a03616ece59d438cf8c1ef4de81c",
+  "sourceCatalogSha256": "93c601a0c6dc654043d643f59d17ac8b37c760ed949320f2005ec9beef086bec",
+  "metadataRequestSha256": "24800d7817db086227c0ca235bb3597c2a4446c4e5c667b8ca9c4493dd9a876b",
+  "receiptSha256": "98a9dae9013cefdb0132692f0a1c22728516850a29fefa0cd4c2d961bdd3f7aa",
+  "scope": "Public upstream artifact metadata only; no live operational configuration or customer data",
+  "metadataSummary": {
+    "totalImageRoles": 49,
+    "arm64ConfigVerified": 45,
+    "selectedConfigNotArm64": 4,
+    "toolMetadataInputs": 5,
+    "downloadedBytes": 750728,
+    "httpRequests": 275,
+    "layersDownloaded": 0,
+    "executablesDownloaded": 0
+  },
+  "images": [
+    {
+      "reference": "docker.io/apache/couchdb:2.3",
+      "rootDigest": "sha256:9f895c8ae371cb895541e53100e039ac6ae5d30f6f0b199e8470d81d523537ad",
+      "manifestDigest": "sha256:90fc5e725557186696477f5363459aacc08edeedf62d066693aefebc9ad6a116",
+      "configDigest": "sha256:6c220699782dbd4b34bced6f5dbfb8aad2c2d33ac9dc2718812f3fe1467161d8",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-admin-api:0.9.0-incubating.26j16n09-snapshot",
+      "rootDigest": "sha256:de205d37866e5f851f47868aabf4f28d53e9b60c2d2681236aef17e679b17a76",
+      "manifestDigest": "sha256:869c158bfd994d629e84297f806cf8f4b4278eada5e18218ad9b550a9661b3a1",
+      "configDigest": "sha256:052ea83ec5901cdebe2b8cf424bfb472f97fcc7498d27ecd699168a8c813042d",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-runtime-go:v1.26-26i22h40-snapshot",
+      "rootDigest": "sha256:94eb04a290cbba70ed51a051ece44e0a6771b017ef230310e431b92879fffcfc",
+      "manifestDigest": "sha256:654b9c547a597da94015888ca1742afb156e3745d803cb07899afa3666cf96f5",
+      "configDigest": "sha256:16cd26646298ff5ce7fe6254204c3c886d08f12d1e829773d1e074f1edd5b56d",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-runtime-java:v8-26i22h40-snapshot",
+      "rootDigest": "sha256:19682a175bf6e53816d8b6d203b48dedf63e02a63967be946db7009f51fe2cb0",
+      "manifestDigest": "sha256:a7f903a381826007bcb0fa6d9d32010b0f7d42254c7bddc825a2dd1164a2ff43",
+      "configDigest": "sha256:097f4e9a52c2a49b6f5679b8e7c0bff9613980d2180ca429a997f74f10a952f5",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-runtime-nodejs:v22-26i22h40-snapshot",
+      "rootDigest": "sha256:614df3085f92ca8e9990dd61b2ded160b1715896c839a315d8801c9820ed9f56",
+      "manifestDigest": "sha256:af10172eb6a4a8ae96678a8f77c7f432236425903fca0728e15721e9f8e18d69",
+      "configDigest": "sha256:ffc40a648b37ba7becdbbecf93405bd59887c6c8cacae591d1120bb80cdb52be",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-runtime-python:sys-26i22h40-snapshot",
+      "rootDigest": "sha256:b9611dc736f1ba01dc3e88fd7f30653a2d43fc7277c52d7c6add61f8ad4e7cf6",
+      "manifestDigest": "sha256:6833c33cb7079c8940ba0ef584e70d533ddc37bd0768ca41f44e8cb0aa799493",
+      "configDigest": "sha256:aa3990d1a31c4d1cc356c3b157b42cbd6cfe38f27d3b352a954bd52722e9a917",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-runtime-python:v3.12-26i22h40-snapshot",
+      "rootDigest": "sha256:418e1be905b98afb393939082be54822b8d5f79f588ff5bb04454cd9146256a6",
+      "manifestDigest": "sha256:46054d4448c06155dcfac9740a38aff71e46672bd7b046d36b447d766b3b344d",
+      "configDigest": "sha256:d1eaf6f66fed6b1a06464c69e85c1b4043474140ca5b5f319d223e0fef4abff6",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-streamer:0.9.0-incubating.26i21w32-snapshot",
+      "rootDigest": "sha256:9374345b20d2e9b628f36fd8f4e5606ab42c7a9696927c99b134cef2208fc30f",
+      "manifestDigest": "sha256:996b62112cf891b1b45494157077ed8748c0664a7f9f7b30a8f019cf2208102c",
+      "configDigest": "sha256:5ad5496625e2c37c83cd90d242cfd675ce7cf0c8bc448799bd29fb297f6eb233",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-wsk-controller:0.9.0-incubating.26i21w32-snapshot",
+      "rootDigest": "sha256:30c958540e29dce2c8975c1f777c3e11f10bd20de569facadc89d216087d5fb4",
+      "manifestDigest": "sha256:9c9c2f95c85aee28273e59ee45545a4b330f56a10af4de29ae545e4bec874dee",
+      "configDigest": "sha256:52b023f9640c77436e417aaf1b5411a54474ec2585b3605ef275b6db71f41015",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/openserverless-wsk-invoker:0.9.0-incubating.26i21w32-snapshot",
+      "rootDigest": "sha256:5180166bcd57e299a236d60533be03ef16ff756d9742f26c2ac51d0ede47a706",
+      "manifestDigest": "sha256:bb419e67038236bc96f3e117f56d4fb37cb40fb29c089076d885decfc0e24541",
+      "configDigest": "sha256:b1c614a4811cffcdd2c4c81a50d2554c780016af57588b108fe421535571d187",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apache/tika:3.2.3.0-full",
+      "rootDigest": "sha256:21d8052de04e491ccf66e8680ade4da6f3d453a56d59f740b4167e54167219b7",
+      "manifestDigest": "sha256:4bdb20f20b3d08d46f8da3e95fdf7a71d74b4e6e0728b99a870a6f19633803d5",
+      "configDigest": "sha256:89b230a6b82a27a32d05bf003db981b73fe7db1f3acf3ac779ab995a5088574f",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/apachepulsar/pulsar:3.0.7",
+      "rootDigest": "sha256:9c9947de139d4dd6c39fab55fac441ba431fc9d742eadc7833d5dcd6d1291720",
+      "manifestDigest": "sha256:bd73c343df790d3d6c33c39d3aa89b6f6f9337247189783299df2effe883da45",
+      "configDigest": "sha256:ead9ed839acea090fa06961d333fd60434e36e9644aaed5b1e8c227ad91cd22b",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/bitnamilegacy/etcd:3.5.17-debian-12-r0",
+      "rootDigest": "sha256:40da3a0c2b9e38723109d88c64f3506a71b1b313bb48e12bf57b80ff40793eb3",
+      "manifestDigest": "sha256:f20085d6b89ec974a51153b65dfe128deed9c8c275db741f9bf32057bc46d4cb",
+      "configDigest": "sha256:c3faf91e35eba82aa252c4d17e56d4a0a206478d9af1ca94027b146da03b06ce",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/bitnamilegacy/redis:8.2.1",
+      "rootDigest": "sha256:25bf63f3caf75af4628c0dfcf39859ad1ac8abe135be85e99699f9637b16dc28",
+      "manifestDigest": "sha256:c8b7aa71fef3b4eb105f52c27d8e92b5570aeda2d7ef1603c3fba0e49fbcd6f5",
+      "configDigest": "sha256:6f3f7a0dc1e661fb4026e66c80eb706d314de8010b4fbe959ce0f57a8bf57565",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/chrislusf/seaweedfs:3.97",
+      "rootDigest": "sha256:bb05d66d2963b1cc48073190781c3dd29e2c4c88a2ae2986bf58e38c86d89c6e",
+      "manifestDigest": "sha256:4b1e9d9a3f086d61af52d0959c39c9a062c600aadb8c1bc706ac05dd768b272a",
+      "configDigest": "sha256:30e41a364dda3046dd2a31819a2706fdd5cfa0922ff62b3c063c5c1e09c76c6a",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/library/busybox:1.36.0",
+      "rootDigest": "sha256:9e2bbca079387d7965c3a9cee6d0c53f4f4e63ff7637877a83c4c05f2a666112",
+      "manifestDigest": "sha256:1af0a016aaa24dd9ddf2ff0771160a68d6394eff88c9c0d5239c93a21ea06f9f",
+      "configDigest": "sha256:3596868f4ba86907dde5849edf4f426f4dc2110b1ace9e5969f5a21838ca9599",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/library/busybox:1.36.1",
+      "rootDigest": "sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+      "manifestDigest": "sha256:bd44eb136a95dcc8dc58995e43abc40a413f2e8e3d4a2aae6bccbe94686acb05",
+      "configDigest": "sha256:b7c873bd97bdc9046fc894e0b216c8aef31e0db4c5b761fb53022e40577ab6c0",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/library/registry:3.0.0",
+      "rootDigest": "sha256:6c5666b861f3505b116bb9aa9b25175e71210414bd010d92035ff64018f9457e",
+      "manifestDigest": "sha256:832ef18332f0dde1edff9b45d796231c68f9b9108cf91acb5e6fac450b8fbdcb",
+      "configDigest": "sha256:2f5ec5015badd603680de78accbba6eb3e9146f4d642a7ccef64205e55ac518f",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/milvusdb/milvus:v2.5.2",
+      "rootDigest": "sha256:7208f04cfd7e5f919d44bb6ae66d163a3a534d44f9437a86bc0162a9fcd8911e",
+      "manifestDigest": "sha256:0b2e4d289706b7831852f145f053eb7c54d3f036dd33b282fab09303de72d406",
+      "configDigest": "sha256:c23e6b751c6e0b508a96f1204235b987b11f408979e73fdfa329b459db852297",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/milvusdb/milvus:v2.5.27",
+      "rootDigest": "sha256:ea3b924dfb2129fa2daca569eab657b4fcebc4baaed5706cf30d51e19d99b0c9",
+      "manifestDigest": "sha256:ce5d4fcb6a657b79cf3ac6c8d993e090bbd05bde879500f7779becec95d73d35",
+      "configDigest": "sha256:bffb596019278968b3ac4fcc3992dacb2c39f151aeaab824f462f4b4415fef3d",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/nginxinc/nginx-unprivileged:1.24",
+      "rootDigest": "sha256:f9dc6a4b27715a9cf0cecf0780c8b84df9a6eb31f18a67ba0d63e4f99cc5c8e9",
+      "manifestDigest": "sha256:751cca0f6046a4eb2abd4a16d92988dbab3624d8c4624c0393be5839b434e06f",
+      "configDigest": "sha256:b2ceba0f6f56e9883b0731c31d0c6cb8fb4da5ab82f013cb75f956106faddb4a",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/openwhisk/action-dotnet-v2.2:nightly",
+      "rootDigest": "sha256:95231a86fa45ef5227fc2d9a43d01c233b2b8537bac881ce4348fc73b164ad6b",
+      "manifestDigest": "sha256:95231a86fa45ef5227fc2d9a43d01c233b2b8537bac881ce4348fc73b164ad6b",
+      "configDigest": "sha256:da8ae46d4d5d55bc3d06502a4883c3ac7857dc5697cba68fe8da248f32594720",
+      "configArm64": false
+    },
+    {
+      "reference": "docker.io/openwhisk/action-ruby-v2.5:nightly",
+      "rootDigest": "sha256:f0508174d6cdf82d0460cee2228ad3b4f5d915e49ffafd33eb5aca75582c39d9",
+      "manifestDigest": "sha256:f0508174d6cdf82d0460cee2228ad3b4f5d915e49ffafd33eb5aca75582c39d9",
+      "configDigest": "sha256:3c39558345bbd9817f37ac54a76675f2994a7d93fb04ac382a57948cdc8cc564",
+      "configArm64": false
+    },
+    {
+      "reference": "docker.io/openwhisk/action-rust-v1.34:nightly",
+      "rootDigest": "sha256:15b3602077bc2024acd63b74a80eccd2f99dfee9b1d643c13d79fb33fd042b74",
+      "manifestDigest": "sha256:15b3602077bc2024acd63b74a80eccd2f99dfee9b1d643c13d79fb33fd042b74",
+      "configDigest": "sha256:b69f379b3471f6ec2604b3fb7f0b30b375323ecbcb53dff98cae9158bec2bd69",
+      "configArm64": false
+    },
+    {
+      "reference": "docker.io/pgvector/pgvector:pg16",
+      "rootDigest": "sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a",
+      "manifestDigest": "sha256:a45475a5bc7882f19e9ca17d49b67f665fa04d500350de2c47af325662445aec",
+      "configDigest": "sha256:f40e48eca747184a758d8f04b465186c04f1c9d7c2bee3935cc38cebdaf52326",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/klipper-helm:v0.13.3-build20260727",
+      "rootDigest": "sha256:5425a2b4613d2458dbdff99218e8d487ebb59c20e7a941f061c0777070f0aac1",
+      "manifestDigest": "sha256:c399ebe632420878b6b701a84e7481a26c3da2652594f9a86fef8b491f0c2dae",
+      "configDigest": "sha256:913df6f04eb6d37b91f873894b0d7275f7603705b107fa9d08a1b58eb6e815cb",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/klipper-lb:v0.4.17",
+      "rootDigest": "sha256:910944bb0bd94f060a82a56ca1ea1c577d3e49b3473a093a47a985f32e92d94a",
+      "manifestDigest": "sha256:32905de585323a03fd44141626d021ac27d586dcd60899c7595b3986a858ba3e",
+      "configDigest": "sha256:1084dac5ea9871ffa6d01fe67150e175df9c28579073cd40d2186c08b37aba50",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/local-path-provisioner:v0.0.37",
+      "rootDigest": "sha256:e757967a5ec338f6a9b371c5a9688bedaa8c3578ea3dd4db329ea0084be0a86f",
+      "manifestDigest": "sha256:6a6bade778f51df4e3f9710db6b62ff6eb366cac897e7eccc3528ebd6d22e86c",
+      "configDigest": "sha256:004fd242b0093da1fa224b46ebd210bc3932b9ef79bff6f26f8489e61209ae26",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/mirrored-coredns-coredns:1.14.6",
+      "rootDigest": "sha256:900f9c109f7a33545d3c811516e8376df9019147b750f5ce3e254468769176ea",
+      "manifestDigest": "sha256:d5cc132a34e034ecfd2d4c73c5bf341e5d8af9a0ba46bd7619d9448beb27e7a2",
+      "configDigest": "sha256:fbccbf70a429fb9ce1cdb13a40ed96b16272ef763dafe050b2c0d121dd29811b",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/mirrored-coredns-coredns:1.14.7",
+      "rootDigest": "sha256:7efd3c635b03efd68c4e8398fc45f0d993d0e9ab016f72c1cefb0fd6d01aa286",
+      "manifestDigest": "sha256:9a631b1e34491f93a35334bc02d8ae190f16224be41689c7f42cc1711a95fe3a",
+      "configDigest": "sha256:5d3b3e589fcf57f626c7967bff5171924cf9c55068911247a1f7bd2458e726c3",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/mirrored-library-busybox:1.37.0",
+      "rootDigest": "sha256:101b4afd76732482eff9b95cae5f94bcf295e521fbec4e01b69c5421f3f3f3e5",
+      "manifestDigest": "sha256:fa8dc70514f29471fe118446e3f84040b19791531ec197836a4f43baf13d744b",
+      "configDigest": "sha256:82c58a5c5b738fd9ffc8fe6bcc0a9467360abfab015b7ae70384563e895b68ff",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/mirrored-library-traefik:3.7.13",
+      "rootDigest": "sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259",
+      "manifestDigest": "sha256:444bb54c1f7ebe5fac94d1c40f02b48c08dc005a92fc65ca29c1c75991d16baa",
+      "configDigest": "sha256:8931bb3e2602443324bd3bac4192af9652d6251482d17adda804113e109e588f",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/mirrored-library-traefik:3.7.8",
+      "rootDigest": "sha256:4299bbed850421258fc5448c2e0e6ad350981d4d335a68de11b92448aedbefe5",
+      "manifestDigest": "sha256:170ed55c5130624c3b4641cb06ee75153402012d41496feb756d4a847dc01a49",
+      "configDigest": "sha256:2eb085ca3ba80498cf1a2858ec007927bb21c81a6c6dc722a3cffe68bd78dc07",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/mirrored-metrics-server:v0.9.0",
+      "rootDigest": "sha256:d9862115e7c7881280d3d75ca26bda8ffc0fc213315979575bf23ce9826205c0",
+      "manifestDigest": "sha256:d0341e07a1cf2b751e684cba68e2a0c62d3c5d2d23501fd67dc384d517ec65de",
+      "configDigest": "sha256:37ceda8805d2e3bca331bcdd659d9cf8d3b4075a68b288054c88e62232d52883",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/rancher/mirrored-pause:3.10.2",
+      "rootDigest": "sha256:f548e0e8e3dc1896ca956272154dde3314e8cc4fde0a57577ee9fa1c63f5baf4",
+      "manifestDigest": "sha256:a433214620b407678934ebd69690a9ed6066247231eacfba181fab20dbc3dbf1",
+      "configDigest": "sha256:3884a337192318652b28de0de1aeb07f446a14f220feb5066f03e93f23ea3b60",
+      "configArm64": true
+    },
+    {
+      "reference": "docker.io/reactivetechio/kubegres:1.18",
+      "rootDigest": "sha256:409413ceab460bb946a3b115eeb08bdf433009b9ab9e93100f2fce83bdef4b05",
+      "manifestDigest": "sha256:c058e4c437c7ef1151de68ca6ccfce0b45d396968692e68e86f2f298d6a02cc6",
+      "configDigest": "sha256:33ee419f6a3e1d163e7470e5f478dc2a49349e287036b7ce4823cc34bce376d0",
+      "configArm64": true
+    },
+    {
+      "reference": "ghcr.io/miki3421/openserverless-operator-migration:0.9.0-migration-4a325f729690",
+      "rootDigest": "sha256:ad53723929d0f807709aa381c17afccc83a285b108f9369a937dfb2d20b6dd46",
+      "manifestDigest": "sha256:ad53723929d0f807709aa381c17afccc83a285b108f9369a937dfb2d20b6dd46",
+      "configDigest": "sha256:f89a0f2b24475dc5028aabe12b2e19e731fbc5a1617e62cac68f58a9248af4d6",
+      "configArm64": false
+    },
+    {
+      "reference": "ghcr.io/nuvolaris/ferretdb:1.6.0",
+      "rootDigest": "sha256:f26cdb07433c057d428e5605136248b08587d7188adafcecd2c8b075e63d6863",
+      "manifestDigest": "sha256:62fd8f8d7ee3b5c7fd28c832f5bc1f565927eea4fa30c2b0dc3afa9568c43bba",
+      "configDigest": "sha256:d38719890fbe9869526f121203fc5aca65bf9c1dff54bdbb47101b5c6e3c1815",
+      "configArm64": true
+    },
+    {
+      "reference": "ghcr.io/nuvolaris/kafka:2.3.1.2311011621",
+      "rootDigest": "sha256:566aa23ad1c28b450da878d7bf4b0ffbd55e2b1c9a6c8b15197c032382e4a508",
+      "manifestDigest": "sha256:07596a45b31ca25d738a0ebc37f4b0aed21105106a7194414029d4f19c29e6c2",
+      "configDigest": "sha256:d81ce532d15b0cbfac78269071c9fe9c887f272a6dde4d91e6519de4e55d812c",
+      "configArm64": true
+    },
+    {
+      "reference": "ghcr.io/nuvolaris/volume_exporter:1.0.0.2311032017",
+      "rootDigest": "sha256:60c5ca028e2cf1c86040d1c074595ef3f5b60a878fb7eb01e7870209945afcf3",
+      "manifestDigest": "sha256:bea99565f36f590d56cecb73be81fe3397ac7295c98f32241c1c53f9771cbefc",
+      "configDigest": "sha256:4b164d2c6cc05d0d0376de94bd9c38b16f209c88da07f881af1e393c1ce27c75",
+      "configArm64": true
+    },
+    {
+      "reference": "ghcr.io/nuvolaris/zookeeper:3.4.14",
+      "rootDigest": "sha256:0114f57d4a41be402e0a8dac1aaaad62208bf49ea5ae6cdcde6de42ce01649cd",
+      "manifestDigest": "sha256:c7f449bdaa3053f9d02ed7e3452f7a22c02c43e0e21f96fabca5373140a7cfda",
+      "configDigest": "sha256:8ca57b35e65bf7917633f2565203efa461c134fe4b753b66ae65ec1c58e5e721",
+      "configArm64": true
+    },
+    {
+      "reference": "quay.io/jetstack/cert-manager-cainjector:v1.11.0",
+      "rootDigest": "sha256:5c3eb25b085443b83586a98a1ae07f8364461dfca700e950c30f585efb7474ba",
+      "manifestDigest": "sha256:92bec98564900f0cec0696b50ab02f75f3f50c2830e01748b7dd73133bf5f2db",
+      "configDigest": "sha256:f23e287a379b3c1f70855757f1e3a9d173a4131bcd4d19b42acc4b0d6cc2e621",
+      "configArm64": true
+    },
+    {
+      "reference": "quay.io/jetstack/cert-manager-controller:v1.11.0",
+      "rootDigest": "sha256:d429b6d696e0ef47cff1d15241c6ffaac351e38ac22664b82fafa771d615b89a",
+      "manifestDigest": "sha256:897d61824f87ab67b52b0b0318b18c0650c3da3e86bdb838db3a17160212633b",
+      "configDigest": "sha256:fbc85505a48906e8ca5cd59585c05412f6b5c6be33b78545f4751287f9975763",
+      "configArm64": true
+    },
+    {
+      "reference": "quay.io/jetstack/cert-manager-webhook:v1.11.0",
+      "rootDigest": "sha256:6730d96fc382a57cde4f7519d2a32b40013e0d3bace2ea0579c7c051fbbd608d",
+      "manifestDigest": "sha256:10116e6875d4f6d2d908ce76261c7ccc9b0ea0e80f23f3144abb154642d88539",
+      "configDigest": "sha256:9c783c3f8f50fc019bb50f8876b77c40a6b53497dedb5967aab67783308206de",
+      "configArm64": true
+    },
+    {
+      "reference": "quay.io/prometheus-operator/prometheus-config-reloader:v0.65.1",
+      "rootDigest": "sha256:ca8684fd1e35ae73c9d497ea37cf5216a32e88f1d0e2eeab22247b532f1e508f",
+      "manifestDigest": "sha256:43319cb781e8dd59943f48b56da6381708968376daf56772b74214f0346df735",
+      "configDigest": "sha256:b2693aa5ddd1b729d00b74ad3bce902f5a4f2cb94fc4ef14e55a659b42a1cc29",
+      "configArm64": true
+    },
+    {
+      "reference": "quay.io/prometheus/alertmanager:v0.25.0",
+      "rootDigest": "sha256:fd4d9a3dd1fd0125108417be21be917f19cc76262347086509a0d43f29b80e98",
+      "manifestDigest": "sha256:98f703d1ef51b2e7b293f615cedb1b531240420caa1d388e1d5740296a677a25",
+      "configDigest": "sha256:4d8d4d8334becf704fc0895b2cf0fb635f4cfd88189714577f5fefcdd0fac640",
+      "configArm64": true
+    },
+    {
+      "reference": "quay.io/prometheus/prometheus:v2.43.1",
+      "rootDigest": "sha256:3760d0bcb02f439394aa172eaadafbb9e657baff6a995458a6e82fdb38c5b6b5",
+      "manifestDigest": "sha256:6c79eaae9b9d7089da93f1ccf1179c6337e5cfdd50be85849a09b6d424d846fa",
+      "configDigest": "sha256:cd1927291d2579d474443eb4880f4c43a39ec17e3b9c321af6c3de6616b25a6b",
+      "configArm64": true
+    },
+    {
+      "reference": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.8.0",
+      "rootDigest": "sha256:5658d0011a41779ef114f3508143a0e67e4169f64333d0337e731d191ab7edb8",
+      "manifestDigest": "sha256:ff522f50aa55a6468debd783595236ac95c7d60537f8e94cd477819884904a4e",
+      "configDigest": "sha256:02ac17ad4a1ff7beb03f9a60d12244705713bfa9e08263bc18eeaf3dc514d3f7",
+      "configArm64": true
+    },
+    {
+      "reference": "registry.k8s.io/kubebuilder/kube-rbac-proxy:v0.14.1",
+      "rootDigest": "sha256:928e64203edad8f1bba23593c7be04f0f8410c6e4feb98d9e9c2d00a8ff59048",
+      "manifestDigest": "sha256:75365a83fa55467092105c2909fa61cdab4b8d47a1902538b249280e848cccdb",
+      "configDigest": "sha256:ee12b694a0f4824f5fca50ffcc95ec8c249245d8bea015944a6ca84a52ac891f",
+      "configArm64": true
+    }
+  ],
+  "nativeArtifactProposals": [
+    {
+      "role": "k3s",
+      "url": "https://github.com/k3s-io/k3s/releases/download/v1.36.4%2Bk3s1/k3s-arm64",
+      "sha256": "c920706346d5ad4e5cd3c7bf1bb09ce71ebe07fec829e513e40f1caf98aed8bb",
+      "verification": "upstream ARM64 checksum metadata only",
+      "bytesVerified": false
+    },
+    {
+      "role": "restic-archive",
+      "url": "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_arm64.bz2",
+      "sha256": "a5f64aaab53d51e311fa3829124c5b703f2d14cf187d8640b6be3b2b49376465",
+      "verification": "upstream checksum metadata only",
+      "bytesVerified": false
+    },
+    {
+      "role": "milvus-archive",
+      "url": "https://github.com/zilliztech/milvus-backup/releases/download/v0.6.1/milvus-backup_0.6.1_Linux_arm64.tar.gz",
+      "sha256": "8f3d140596b0db51e7c30f19356ef0c86e3f2ad0ad853983bc3e9c2ca1b23089",
+      "bytes": 27459388,
+      "verification": "upstream GitHub release metadata only",
+      "bytesVerified": false
+    },
+    {
+      "role": "pymongo-wheel",
+      "url": "https://files.pythonhosted.org/packages/cc/06/628f93f15f269d8a1ea20a024083e67871f722876a33992aec5525a6c6c4/pymongo-4.18.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+      "sha256": "c743347143298252948e038f768ea6f71b71ef8a85b7cf0dc13b734e072f74da",
+      "bytes": 1050746,
+      "verification": "upstream PyPI distribution metadata only",
+      "bytesVerified": false
+    },
+    {
+      "role": "dnspython-wheel",
+      "url": "https://files.pythonhosted.org/packages/10/02/cdcc9b7c051786a103c3b09e1003a82fa0c66bcb91ffbdabcfbf7b4163b9/dnspython-2.9.0-py3-none-any.whl",
+      "sha256": "9a4aedb833c3c1b49214d04d44d3032ab7a9135f7c1d29a549b4ff78fd82fda9",
+      "bytes": 354822,
+      "verification": "upstream PyPI distribution metadata only",
+      "bytesVerified": false
+    }
+  ],
+  "additionalBlockers": [
+    "Trusted target ARM64 OPS/Bun/client provenance missing; installed OPS0.1.0 is not the qualified target client",
+    "Current release/installer and12source architecture contracts remain AMD64",
+    "Target image layers and native execution/ABI are not qualified",
+    "Full Kind workload/data inventory, execution fences and isolated complete rehearsal remain unexecuted"
+  ],
+  "migrationReady": false,
+  "applicationChanges": false,
+  "serviceChanges": false
+}

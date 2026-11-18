@@ -124,12 +124,22 @@ private data or previous recovery material is deleted. Source bytecode cache
 entries with unknown prior ownership are left untouched; no operational payload
 was stored in them by these tests.
 
-## ARM64 follow-up — in progress2026-11-18
+## ARM64 follow-up — blocked native qualification2026-11-18
 
 Operator authorizes ARM64 qualification and preparation of complete-path checks,
 without migration/service stop/application changes. The offline identity audit
-and [complete-path matrix](arm64-full-path-checks.md) are being qualified on this
-same branch. Existing AMD64 operational catalogs and all source/restore guards
-remain unchanged. The exact metadata-only batch24800d78 is explicitly approved and in progress;
+and [complete-path matrix](arm64-full-path-checks.md) are qualified on this
+same branch as offline identity checks only. Existing AMD64 operational catalogs and all source/restore guards
+remain unchanged. The exact metadata-only batch24800d78 is explicitly approved and completed;
 no binary/layer download, installation or implicit new client/catalog selection. The previous
 phase1source qualification remains valid, not a native ARM64 acceptance claim.
+
+ARM64 current gate:BLOCKED. All49image metadata roots/configs inspected;45have
+verified ARM64 configurations and4selected immutable configurations are AMD64
+(custom migration operator and legacy .NET2.2/Ruby2.5/Rust1.34). Official native
+tool/wheel metadata proposals are recorded without downloading bytes. Source
+39709c5f audit has independent18/18GO and author225distinct normal/optimized
+checks PASS. Operational catalogs/guards/engine/application remain unchanged.
+Full-path checks are prepared but not executed; artifacts, native source port,
+full-host recovery and maintenance remain future gates. See the linked findings
+and matrix; do not interpret offline audit GO as ARM migration readiness.

@@ -1,7 +1,7 @@
 # ARM64 qualification and complete-path verification
 
-Date2026-11-18. Status: **in progress — offline checks implemented; actual ARM64
-artifacts and native/runtime qualification blocked on missing approved inputs**.
+Date2026-11-18. Status: **blocked for native migration — offline audit reviewed; upstream
+metadata completed, four selected image configurations are AMD64**.
 Scope: the existing Kind0.1.0 to native K3s/OPS0.9.0 migrator. Application source,
 configuration, permissions, running workloads, Docker, Kind and models remain
 unchanged. No operational migration, service stop, restore, image import, VM,
@@ -143,13 +143,54 @@ New independent immutable rerun is pending on the corrected candidate.
 Author141migration +84restore cases now PASS in normal and optimized modes
 (225distinct);18new audit cases include both wheel-content regressions.
 
-### Metadata acquisition authorization
+### Completed authorized metadata acquisition
 
 Operator explicitly approves the closed metadata-only batch, request digest
 24800d7817db086227c0ca235bb3597c2a4446c4e5c667b8ca9c4493dd9a876b.
-State:in progress. Read only the49original image roots, unique ARM children and
+State:completed. Read only the49original image roots, unique ARM children and
 configuration blobs plus5named primary checksum/release/distribution documents;
 128MiB/512request ceilings. No mutable-tag resolution, image layers, executables,
 models, installation or service changes. Original content-addressed bytes and a
 closed receipt remain private. This does not authorize the next binary/build or
 operational batch. Metadata failures stay explicit; no version/digest substitution.
+
+## Current result — qualification BLOCKED
+
+Exact audit source39709c5f52f5a03616ece59d438cf8c1ef4de81c has independent GO,
+receipt digestec43bb39039e8292440df40294377cea4a54fc17b8ba024f8d120dc04072fdd3.
+All18frozen independent controls PASS in normal/optimized modes; author141migration
+and84restore cases PASS in both modes (225distinct). Prior392HOLD remains retained.
+This GO qualifies the audit, not the artifacts or migration.
+
+The approved batch completed49/49image roles and5/5primary tool metadata inputs:
+750728bytes in275HTTP requests; no layers/executables/models/installations or
+service changes. Source catalog digest93c601a0 is unchanged. The exact existing
+root/ARM-child/config proof verifies45ARM64 configurations; the following FOUR
+selected digests resolve to AMD64 configurations:
+
+| Existing catalog role | Blocker | Required disposition before ARM64 qualification |
+| --- | --- | --- |
+| Custom migration operator at source4a325f729690 | Selected immutable operator artifact is AMD64 | Qualify an ARM64 artifact preserving the exact required restore behavior/source |
+| OpenWhisk action-dotnet-v2.2:nightly | Selected immutable runtime artifact is AMD64 | Resolve an approved native-compatible artifact or explicitly reviewed catalog decision; never omit silently |
+| OpenWhisk action-ruby-v2.5:nightly | Selected immutable runtime artifact is AMD64 | Same closed artifact/catalog decision |
+| OpenWhisk action-rust-v1.34:nightly | Selected immutable runtime artifact is AMD64 | Same closed artifact/catalog decision |
+
+This finding concerns the FIXED digests, not a claim about every tag/platform
+published under those repository names. No mutable tag was resolved and no
+reference/version/digest was substituted. Layer closure, native startup and
+security/application compatibility remain untested even for the45positive roles.
+
+The [public metadata findings](arm64-metadata-findings.json) retain original
+root/selected-manifest/config identities and upstream-only native input proposals.
+Official metadata establishes an ARM64 K3s checksum, Restic archive checksum,
+Milvus ARM64 archive identity and CP312 ARM64 PyMongo/platform-neutral dnspython
+wheel identities. Their actual bytes are NOT downloaded or ELF/import-qualified.
+These proposals do not rewrite the installedTools pins or authorize downloads.
+The native target CLI/Bun/tool provenance and12wrapper/worker architecture
+contracts still need qualification; current local OPS0.1.0 is preserved.
+
+The complete-path verification matrix is prepared, with operational rows NOT_RUN.
+Next work is resolving the four fixed-digest blockers and trusted native target
+inputs, then a reviewed architecture port and isolated full rehearsal. No guards
+are disabled, catalog roles dropped, architecture emulation introduced, or main
+branch merged by this audit. No maintenance/start/stop instruction is executed.
