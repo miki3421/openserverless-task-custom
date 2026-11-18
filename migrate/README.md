@@ -350,3 +350,13 @@ waiting time. This reports waiting rather than a percentage or estimated complet
 Private command output remains in the protected diagnostics. The JSON option does
 not add these periodic human messages. Known failed backup components are named using a fixed message; raw errors and
 command arguments are not forwarded. Feedback does not retry or replay phases.
+
+### ARM64 qualification preparation
+
+The offline `python3 -B migrate/qualify_arm64.py` auditor reads explicitly supplied
+local catalog/installer/tool/OCI/wheel identities. It never downloads, executes
+native tools or changes migration guards. Exit2 reports missing or incompatible
+inputs; even identity-pass is not native runtime or migration readiness.
+See [ARM64 and full-path checks](arm64-full-path-checks.md) for current blockers,
+evidence levels and unexecuted native/complete-rehearsal gates. Do not repin the
+AMD64 catalog to local binary hashes or enable ARM64 by removing its guards.

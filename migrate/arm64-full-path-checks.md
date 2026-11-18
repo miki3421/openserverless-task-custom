@@ -1,0 +1,128 @@
+# ARM64 qualification and complete-path verification
+
+Date2026-11-18. Status: **in progress — offline checks implemented; actual ARM64
+artifacts and native/runtime qualification blocked on missing approved inputs**.
+Scope: the existing Kind0.1.0 to native K3s/OPS0.9.0 migrator. Application source,
+configuration, permissions, running workloads, Docker, Kind and models remain
+unchanged. No operational migration, service stop, restore, image import, VM,
+GPU workload, installation, download or new environment variable is performed by
+this document or the offline audit. Separate maintenance approval remains required.
+
+## Evidence levels
+
+1. **Detected:** a local binary is ELF64 ARM64. This is not a trusted target pin,
+   target version, ABI check or execution result.
+2. **Identity verified:** complete selected local metadata and bytes match an
+   explicitly reviewed ARM64 catalog and native platform. Layer metadata is not
+   layer-content validation; wheel tags are not native import qualification.
+3. **Native/runtime qualified:** exact tools, clients and images pass the intended
+   isolated ARM64 runtime/CLI/ABI checks. No privileged production profile is used.
+4. **Complete rehearsal:** a separately authorized isolated ARM64 source/target
+   migration preserves state, isolation and recovery under the intended versions.
+5. **Production accepted:** approved maintenance plus operator application checks.
+   Neither a rehearsal nor healthy infrastructure proves operator acceptance.
+
+The offline tool always returns migrationReady=false and
+nativeRuntimeQualified=false. Missing metadata is BLOCKED, not an exclusion or
+permission to resolve another image. The existing AMD64 catalog, original image
+roots, target hashes, generated engine and predecessor restore guards stay exact.
+A new ARM64 catalog and source contract need positive evidence and review before
+any operational route is enabled.
+
+## Offline audit — implemented, local qualification in progress
+
+```sh
+python3 -B migrate/qualify_arm64.py --help
+python3 -B -m unittest discover -s migrate -p test_qualify_arm64.py
+```
+
+The audit accepts an explicit candidate catalog/installer and optional absolute
+`--tool ROLE=PATH` inputs for ops,bun,k3s,restic,milvus-backup. It never executes
+them or searches PATH. Optional `--metadata-dir` stores original OCI JSON bytes
+as blobs/sha256/DIGEST_HEX. Optional `--wheel-dir` stores the exact wheel basename
+from each pinned URL. There is no registry/provider/cache fallback or input copy.
+Files, parent paths and digests/sizes are checked before use. Exit2 means blocked;
+exit0 means identity checks passed only, never operational qualification.
+
+For an indexed image require one unambiguous Linux ARM64/v8 child, exact original
+root/child/config bytes, descriptor sizes and an ARM64 configuration. A label
+without a matching config is insufficient. Unindexed manifests also require
+configuration proof. No layer is downloaded or claimed verified. Bound graph
+work and reject duplicate keys, missing/corrupt/linked objects, bad variants,
+foreign OS/configs, cycles/depth overflow and duplicate image roles.
+
+For binaries require BOTH the reviewed full-file hash and native ELF identity.
+For CP312 native wheels verify reviewed wheel hash/size, filename, bounded safe
+ZIP members and every native ELF member; imports remain NOT_RUN. Platform-neutral
+wheels still need their exact pinned bytes. Report remaining AMD64 source paths
+and default architecture propagation, without editing those operational guards.
+The static scan is a blocker inventory, not proof that a refactored source works.
+
+### Initial actual-host findings (no tool execution)
+
+- Native OPS/Bun/kubectl/Helm executables are ELF ARM64. Installed OPS build
+  metadata reports0.1.0-2409121919.dev, Go1.22.7 and modified source. It is not the
+  target CLI attested by the migration catalog; no binary is replaced or repinned.
+- Existing target catalog and installer are AMD64. Existing native OPS/Bun
+  hashes do not match their AMD64 catalog pins. K3s, Restic and Milvus are absent
+  from the explicitly inspected qualification paths; do not claim absent from
+  every possible host directory or search private service configuration for them.
+- All49pinned image roles lack complete local root/ARM-child/config evidence in
+  the selected qualification store. This is not a registry availability result.
+- PyMongo's selected CP312 wheel is x86_64; platform-neutral dnspython still lacks
+  local verified wheel bytes. Source paths and imports also bind AMD64.
+- Shared canonical OCI helpers already accept explicit architecture parameters;
+  migrate/acquisition currently omits them and falls back to AMD64 defaults.
+  Do not edit a generated engine copy to hide that wrapper propagation gap.
+
+## Verification matrix — prepared, operational cases NOT_RUN
+
+| ID / level | Check and minimum oracle | Current state / execution owner |
+| --- | --- | --- |
+| A01 identity | Exact CLI/tasks/engine revisions; ARM64 OPS/Bun/K3s/Restic/Milvus and client hashes/ELF/ABI. Preserve current global OPS | blocked missing target inputs; local artifact audit only |
+| A02 identity | All49target catalog roles have exact native root/child/config and full layer closure; source runtime images and extra workload closure separately verified | local metadata audit prepared; layers NOT_RUN |
+| A03 native | CP312 ARM64 PyMongo/dnspython imports, etcd restore ELF, native tools/version/CLI parsing with original-source dispatch and no self-update/download | NOT_RUN; isolated qualification after approved staging |
+| A04 source | Explicit ARM architecture propagated through acquisition, export/import, source cache, restore peak storage, worker paths and expected-image proofs | blocked current AMD64 source contract; no guard weakening |
+| B01 inventory | Every Kind namespace/controller/PVC/claim/data location and image assigned migrate/reconstruct/retain-inactive; no unaccounted extras or automatic old-agent activation | prepared; fresh sanitized inventory before maintenance |
+| B02 backup | Exact complete installation generation, independent key/off-host access, checksums/native restore methods, source/host/physical capacity and immutable original images | prepared; no backup performed; data-only backup is not this gate |
+| C01 boundary | --check performs no stop/install/download; unexpected daemon/context/image/plan/inventory drift rejects before effects | prior local wrapper tests PASS; native CLI dispatch qualification pending |
+| C02 recovery | Durable original state before effects; ordered selected stops and Kind last, Docker preserved. Sync/stop/timeouts halt; no blind rerun/restart/rollback | prior21frozen + author evidence PASS; actual stop NOT_RUN |
+| D01 bootstrap | Exact ARM K3s/checksums, ports/CIDRs/host listener ownership, fresh empty target, standard addons; no external application preload before core restore | NOT_RUN; isolated ARM64 qualification first |
+| E01 data | Native backend restore plus tenant credentials/Redis ACLs, Journal/session/queue/outbox identities, TTL/checkpoints, provider references and actual PVC allocations preserved | NOT_RUN; synthetic source on isolated target, then operator-approved source |
+| E02 isolation | Original credentials valid; peer/anonymous access denied where required; final IAM checked after last restore. No broad permissions or public backend exposure | NOT_RUN; controlled isolated requests, no real user payloads |
+| E03 execution fence | Persistently suspend ingress/domain writers/triggers/schedules/sends before final capture and through validation. Prove no domain writes even without human access | NOT_RUN and required before migration; existing resume-schedules phase needs explicit cutover review |
+| F01 Ollama | Same selected model bytes/profile and GPU access; old instance stopped, new one owned; qualified shared GPU scheduling with speech; no model download | NOT_RUN; separate approved move after core restore |
+| F02 Docker | Retained services originally active restart in reviewed order; originally stopped/Kind/moved Ollama remain stopped. Stable private endpoints both directions, authentication and no duplicate readers/bridges/writers | NOT_RUN; no private configuration copy |
+| G01 acceptance | Web/User/admin permissions, PA private/group flow, native contacts, image/voice, Calendar/activities/Journal, reminders/alerts/report schedules. Exact receipts, no duplicate effects or data loss | NOT_RUN; production business checks by operator only |
+| G02 lifecycle | Reboot persistence, encrypted autonomous scheduled backup, future immutable build/registry/deploy workflow and source-retirement decision | NOT_RUN; separate approved operational checks |
+| G03 recovery | Failures before/after restore, uncertain sends, target reboot and rollback before/after new writes; preserve exact original proofs and reconcile new writes | simulated boundary subset PASS; full isolated recovery NOT_RUN |
+
+## Next bounded input step
+
+Prepare a closed metadata-only request: exact current49image roots and uniquely
+selected ARM child/config descriptors; primary checksum/release/distribution
+metadata for the existing K3s,Restic,Milvus,PyMongo,dnspython versions. No image
+layers,binaries,models or installations. Verify the request SHA before execution;
+operator approval is required by the published company download rule. Cache
+original bytes privately with their hashes; never publish authentication tokens,
+headers, signed URLs, private endpoints or configuration contents. Preserve
+missing/foreign/unauthorized artifacts as explicit failures, without substitution.
+
+After metadata resolution, prepare exact required ARM64 binary/wheel/operator
+artifact inputs and obtain the applicable download/build approval. Only then
+freeze a reviewed ARM catalog and qualify the source port and native harness.
+Any local isolated guest or hosted rehearsal is separately specified/authorized;
+this plan does not create it. No migration start or service-stop command is
+included in the current qualification batch.
+
+## Author checkpoint
+
+Offline author qualification:15new synthetic audit cases PASS; complete affected
+migration suite138 and restore suite84 PASS, repeated separately under optimized
+Python (222distinct cases, not444). Independent18audit cases were frozen before
+implementation, manifest digest
+440f340d945e4564b502ad0f94df6543d0afba5108c57ce55628856b5ea2bacb.
+Final independent audit review is pending. Current source/catalog hashes and
+original predecessor/durability evidence are retained separately; no native
+ARM64 migration acceptance is inferred. The metadata-only request is pending
+operator approval; no network artifact input was acquired.

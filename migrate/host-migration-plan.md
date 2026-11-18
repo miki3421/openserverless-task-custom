@@ -123,3 +123,13 @@ Synthetic test directories are automatically removed. No shared cache, unrelated
 private data or previous recovery material is deleted. Source bytecode cache
 entries with unknown prior ownership are left untouched; no operational payload
 was stored in them by these tests.
+
+## ARM64 follow-up — in progress2026-11-18
+
+Operator authorizes ARM64 qualification and preparation of complete-path checks,
+without migration/service stop/application changes. The offline identity audit
+and [complete-path matrix](arm64-full-path-checks.md) are being qualified on this
+same branch. Existing AMD64 operational catalogs and all source/restore guards
+remain unchanged. New artifact metadata download approval is pending; no network
+artifact acquisition or implicit new client/catalog selection. The previous
+phase1source qualification remains valid, not a native ARM64 acceptance claim.
