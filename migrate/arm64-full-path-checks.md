@@ -194,3 +194,15 @@ Next work is resolving the four fixed-digest blockers and trusted native target
 inputs, then a reviewed architecture port and isolated full rehearsal. No guards
 are disabled, catalog roles dropped, architecture emulation introduced, or main
 branch merged by this audit. No maintenance/start/stop instruction is executed.
+
+### Independent metadata closeout
+
+Exact5ab691d348e06c3fddc41455e3a38febfc90eda9 metadata/docs independently reviewed
+GO, receipt digest154c2cd8cdbf8f968c5f575d3967a448664bc4c6152e08a5b75f9acf92e00679.
+All49ref/root identities match the unchanged catalog;143original root/child/config
+JSON observations and descriptor sizes independently reproduce45ARM64/4AMD64.
+All5native URL/hash/size proposals match the approved primary metadata. Actual
+binary/layer/ABI/runtime and complete migration gates remain BLOCKED/NOT_RUN.
+The final follow-up records this receipt only and does not alter audited code,
+operational catalogs, source guards or application. Publish the separate branch;
+no main merge or additional download/operation is implied.
