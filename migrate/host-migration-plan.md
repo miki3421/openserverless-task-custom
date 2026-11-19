@@ -238,3 +238,99 @@ until native qualification and accepted handoff (or cancellation). Synthetic
 fixtures auto-clean; no shared cache, service, model or application data is
 removed. Native byte identity, published source and migration readiness remain
 separate results. Operational phases2..8 are still not started.
+
+## Four-image and CLI native resolution — 2026-11-19
+
+State: **in progress** on the existing dedicated branch, base730d1546edabd1cbb66b74d66a72adc75a87a513.
+Operator scope: resolve the four native image blockers and qualify OPS/Bun;
+focused tests and independent review, no migration/service stop/application change.
+Execution mode:SINGLE_AGENT implementation plus independent read-only QA.
+The company change feed is empty; existing contracts and operational gates apply.
+
+| Work | State | Acceptance |
+| --- | --- | --- |
+| Freeze native provenance/compatibility cases | completed | Independent26case manifesteeaa6528a76e9e1a3203456744559724b5542c58dbe5fdfd2446b539a5da75f2 |
+| Acquire upstream provenance | completed | Approved request 053ee99168b7b5c5f0c0455f57af8a6dc34bd3f2e72791cd242c9a13b9840b80. 9 initial responses, 3 additional trees and 28 blobs. All 40 responses (839,892 bytes) match the stored receipt. All 28 blob bindings were reverified offline. |
+| Establish target CLI/Bun identities | in progress | Exact CLI source b889360d27f1 inspected. Its go.mod declares Go 1.22.5. Determine the exact Go toolchain or official CLI artifact and verify Bun in the same isolated target profile before native execution. |
+| Resolve operator and three legacy runtimes | in progress | Operator source 4a325f729690 and legacy .NET, Ruby and Rust recipe candidates inspected. Native base manifests, layer closure and runtime compatibility are open. |
+| Native compatibility checks | blocked | Review dispatch before any OPS execution; no-network temporary home/profile without actual host credentials/socket; no fallback to unconfined execution |
+| Final review | not started | Exact immutable six-role evidence and source review, preserving deferred operational gates |
+
+Local Bun currently reports1.3.14 and has changed bytes since the preceding
+observation; exact source copies/hashes are retained privately. This observation
+does not select a target Bun version or bless mutable installed state. OPS is
+still the previously observed modified legacy binary, not the trusted CLI target.
+No Go executable was found on PATH, so a native source build must not silently
+download a toolchain or dependencies.
+
+The installed unprivileged bubblewrap preflight with /bin/true failed at
+loopback setup with EPERM. No OPS or candidate native binary was run by that
+probe. Native test execution remains blocked rather than falling back to the
+real host home/network. No services, namespace configuration or host policies
+were changed to satisfy the test.
+
+Metadata/source discovery is distinct from permission to fetch image layers,
+executable archives, build toolchains or package dependencies. Inspect the
+reviewable source/build contracts before preparing any such subsequent batch.
+
+### Plan resumed on 2026-11-19
+
+The local suite passed 171 distinct migration and provenance tests in standard
+and optimized Python. The same cases run in each mode. The test suite includes
+a mocked registry 403 response. The existing native provenance source remains
+at its local checkpoint and still needs independent review. The verified
+metadata receipt is b6bb4eb48023d004239e56e2b146144ed87dda0627c002ee3d09787090fc9025.
+The Control Plane change feed contained zero updates.
+
+Split the next acquisition into a small metadata step and a separate
+artifact step. Verify OCI manifest and config identity for the exact base
+candidates before fetching layers. Freeze the platform, manifest, config and
+layer digests in the artifact request. Keep the original 49-role catalog
+unchanged through qualification. The existing draft with an 8 GiB ceiling is
+a planning input. Its artifact downloads remain pending separate authorization.
+
+1. Qualify the custom operator, OPS 0.9.0 and Bun as one dispatch path.
+   Bind the exact operator source, its Python/Poetry recipe and native
+   embedded tools. Verify the CLI and Bun with the target task checkout in
+   an isolated ARM64 environment. Record dispatch, task help and dry-run
+   results against the same source and executable identities. The installed
+   host CLI and Bun observations remain available for comparison.
+2. Treat .NET 2.2 as the critical compatibility decision. The pinned
+   candidate recipe uses `sdk:2.2-alpine` and `runtime:2.2-alpine`.
+   Qualify their ARM64 manifest and ABI first. The draft also lists
+   non-Alpine candidates. Those require explicit equivalence evidence before
+   selection. Ruby 2.5 requires exact gem/platform proof and Rust 1.34
+   requires the pinned Go proxy source/build plus the native Rust binary.
+   If a role cannot be preserved, present the exact compatibility decision
+   before changing or removing it.
+3. Qualify the same-host sequence with synthetic data in an isolated rehearsal.
+   Inventory every Kind workload, volume, image, tenant and access grant.
+   Verify encrypted backup recovery and independent access to restore material.
+   Keep source and target writers, triggers and sends fenced through data
+   verification. The restore schedule-resume step requires a separate
+   activation decision. Check Ollama model bytes and GPU access after the core
+   restore. Test private reachability and DNS/port conflicts for retained Docker
+   services before restoring their application endpoints.
+
+Maintenance, source stop, K3s installation and restore remain phase 2 onward.
+
+### Operator decision on unused catalog runtimes
+
+The operator approves omitting unused optional runtimes. The narrow first scope
+is the three legacy bundles named in the release. Every saved action in every
+archived OpenWhisk namespace contributes to the decision. Resolve aliases and
+protect blackbox images, system and prewarm entries, source defaults that
+remaining entries still use, and platform roles. Verify the bound result before
+source stop and again against the unpacked archive before importing images.
+An omitted runtime can be registered with compatible image bytes when it is
+needed.
+
+This makes the three legacy images conditional on real dependencies. The custom
+operator, target OPS/Bun, ARM64 compatibility and complete native rehearsal
+remain qualification gates. The branch changes only the migrator and the
+destination catalog selection. Operational phases remain unstarted.
+
+The candidate passed 258 migration and restore tests in normal and optimized
+Python. These are the same cases in each mode. The separate adapter-scope suite
+reported three existing isolation-fixture failures. The same three case IDs
+failed against the preceding driver source. Independent source review is pending.

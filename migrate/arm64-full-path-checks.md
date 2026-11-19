@@ -256,3 +256,13 @@ Twenty-four independent preparation controls PASS normal/-O,19focused replays
 PASS and all5original inputs/extractions independently crosschecked. This does
 not satisfy deferred positive ARM profile/marker/native/ABI/full-rehearsal
 aspects; see the current host plan for exact retained limitations.
+
+### Optional legacy images after the operator decision
+
+The three legacy language images are conditional in the fresh same-host release.
+The selected archive supplies the complete saved action inventory. Protect
+referenced runtimes and blackboxes, system images, prewarm and the defaults of
+retained runtime families. Apply the same result to acquisition, the prepared
+capsule and the final installed catalog. Continue to use the full pinned release
+for evidence about earlier restores and unqualified source candidates. The
+custom operator, OPS/Bun and native ARM64 rehearsal remain open.

@@ -275,8 +275,9 @@ workers. Operators do not need a separately supplied offline kit.
 
 Before target-image acquisition, a metadata-only walk of every pinned root bounds
 the compressed content, fetch scratch, two retained exports and software staging.
-All catalog references remain required. Shared content does not remove an alias
-or justify assuming cache reuse. The bound includes manifest/configuration
+Required references come from the pinned release and the selected-backup
+runtime decision below. Shared content still retains every required alias and
+does not justify assuming cache reuse. The bound includes manifest/configuration
 metadata for unselected platforms, but selects Linux AMD64 layer content only.
 Unsupported descriptors and compression stop preparation.
 
@@ -371,3 +372,21 @@ source-cache fetch, image imports/proofs and worker CLI/ELF paths. Existing
 profiles and operational host/catalog guards remain AMD64: four image roots and
 target OPS/Bun still block a complete native catalog. No ARM64 operational route
 or migration is enabled by this preparation.
+
+### Optional legacy runtimes for fresh same-host migration
+
+The release lists the exact .NET 2.2, Ruby 2.5 and Rust 1.34 image references
+eligible for omission. Before image preflight, `ops migrate --to=k3s` and its
+check read the exact selected encrypted archive. The logical export binds
+every namespace entity to its document ID, revision, type and runtime.
+Saved kind aliases resolve against the source catalog. Saved actions, their
+runtime families, blackbox image repositories, system kinds, prewarm entries,
+and nonoptional platform images remain protected.
+
+The permitted omissions narrow target acquisition and the installed runtime
+catalog. The archive and source image cache retain their original contents.
+Prepared assets bind the selection to the snapshot and to the catalog digest.
+Restore recomputes it before image import. An existing prepared profile without
+that proof keeps its full catalog. Future use of an omitted runtime requires
+registering it with compatible image bytes. AMD64 operational gates and
+separate native ARM64 qualification continue to apply.

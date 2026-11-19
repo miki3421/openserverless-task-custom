@@ -195,14 +195,22 @@ def prepare_promotion():
     plan=copy.deepcopy(original);plan['schemaVersion']=2
     plan['preparationPlanSha256']=hashlib.sha256(json.dumps(original,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     plan['operatorCandidate']=PROFILE['target']['operator'];plan['taskCommit']=PROFILE['target']['taskCommit']
-    runtime=(ROOT/'source-runtimes.json').read_bytes();plan['runtimeCatalogSha256']=hashlib.sha256(runtime).hexdigest()
+    runtime_path = ROOT / "source-runtimes.json"
+    if SAME_HOST_RESTORE and CONFIG.get("restoreRuntimeCatalogSha256"):
+        runtime_path = ROOT / "selected-runtimes.json"
+    runtime = runtime_path.read_bytes()
+    if runtime_path.name == "selected-runtimes.json":
+        rendered = json.dumps(json.loads(runtime), sort_keys=True, separators=(",", ":")).encode()
+        if hashlib.sha256(rendered).hexdigest() != CONFIG["restoreRuntimeCatalogSha256"]:
+            raise ValueError("Selected runtime catalog changed after archive verification")
+    plan['runtimeCatalogSha256']=hashlib.sha256(runtime).hexdigest()
     plan['runtimeCompatibilityImages']=RUNTIME['runtimeImages']
     PROMOTION_PLAN=TARGET_PLAN=plan;store(ROOT/'planning/promotion-plan.private.json',plan)
     inputs=ROOT/'target-090/inputs';inputs.mkdir(mode=0o700,parents=True,exist_ok=True)
     files={'tools/k3s':ROOT/'inputs/tools/k3s','tools/ops':ROOT/'inputs/tools/ops','tasks/task.bundle':ROOT/'inputs/tasks/target.bundle',
       'images/baseline.tar':ROOT/'inputs/images/baseline.tar','images/legacy-runtimes.tar':ROOT/'source-cache.tar',
       'images/operator-candidate.tar':ROOT/'inputs/images/operator-candidate.tar','config/promotion-plan.private.json':ROOT/'planning/promotion-plan.private.json',
-      'config/runtimes.json':ROOT/'source-runtimes.json'}
+      'config/runtimes.json':runtime_path}
     manifest={}
     for name,path in files.items():
         target=inputs/name;target.parent.mkdir(mode=0o700,parents=True,exist_ok=True)

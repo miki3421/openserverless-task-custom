@@ -55,12 +55,13 @@ class MigrationBoundary(unittest.TestCase):
         replies=[subprocess.TimeoutExpired(['kubectl'],15),mock.Mock(returncode=0,stdout=b'{"items":[{}]}',stderr=b'')]
         with tempfile.TemporaryDirectory()as d,mock.patch.object(run.subprocess,'run',side_effect=replies)as execute,mock.patch.object(run.time,'sleep'):
             run.await_nodes(['kubectl'],Path(d));self.assertEqual(execute.call_count,2)
-    def exercise(self,foreign=False,offline=False,no_space=False):
+    def exercise(self,foreign=False,offline=False,no_space=False,inventory=None):
         with tempfile.TemporaryDirectory()as tmp:
             r={'to':'k3s','check':True,'json':False,'repository':'','key':'','snapshot':'','ops':'/ops','bun':'/bun','bin':'/bin','opsHome':tmp}
             source={'cluster_uid':'synthetic-cluster','container_id':'a'*64,'docker_context':'default','docker_daemon_id':'synthetic-daemon','kind_cluster':'synthetic-kind'}
             c={'sourceConfig':'/source','host':{'uuid':'synthetic-host'},'paths':{'state':tmp}}
-            bundle={'source':{'hostUuid':'synthetic-host','clusterUid':'synthetic-cluster'},'runId':'b'*32,'docker':{'archiveCount':2,'sourceRecovered':True}}
+            bundle={'source':{'hostUuid':'synthetic-host','clusterUid':'synthetic-cluster'},'runId':'b'*32,'docker':{'archiveCount':2,'sourceRecovered':True},
+                    'native':{'snapshot':'d'*64,'prefix':'synthetic/native'}}
             calls=[]
             def check_output(args,*a,**kw):
                 calls.append(args)
@@ -82,17 +83,35 @@ class MigrationBoundary(unittest.TestCase):
                 else:data=b'synthetic-daemon\n'
                 stdout.write(data);return mock.Mock(returncode=0)
             hydrate=mock.Mock();download=mock.Mock()
+            optional = "docker.io/openwhisk/action-dotnet-v2.2:nightly"
+            system = {"reference": "docker.io/apache/synthetic-system:1", "digest": "sha256:" + "e"*64}
+            rows = [system, {"reference": optional, "digest": "sha256:" + "f"*64}]
+            base_release = {"installedTools": {"ops": "qualified", "bun": "qualified"}, "images": []}
+            selected_release = {**base_release, "images": rows, "optionalRuntimeImages": [optional],
+                                "target": {"images": {"system":system["reference"]}}}
+            proof = {"schemaVersion":1,"snapshot":bundle["native"]["snapshot"],"optionalImages":[optional],
+                     "excludedImages":[optional] if inventory == "unused" else [],"catalogSha256":"a"*64}
             patches=[mock.patch.object(source_runtime,'local_socket'),mock.patch.object(run.sys,'version_info',(3,12)),mock.patch.object(run.os,'getuid',return_value=1000),mock.patch.object(run,'acquire_operation',side_effect=lambda c:os.open(Path(tmp)/'store.lock',os.O_CREAT|os.O_RDWR,0o600)),mock.patch.object(run,'verified_store',return_value=c),mock.patch.object(run,'selected',return_value=(None,bundle)),mock.patch.object(run,'hardware_uuid',return_value='synthetic-host'),mock.patch.object(run,'availability',return_value={'missing':[]}),mock.patch.object(run,'acquisition_preflight',side_effect=ValueError('insufficient_preacquisition_image_storage')if no_space else None),mock.patch.object(run,'read',return_value={'kind':{'source':source}}),mock.patch.object(run,'regular',side_effect=lambda p,*a:Path(p)),mock.patch.object(run,'digest',return_value='qualified'),mock.patch.object(run.subprocess,'check_output',side_effect=check_output),mock.patch.object(run.subprocess,'run',side_effect=subprocess_run),mock.patch('kind_adapter.KindConfig'),mock.patch('kind_adapter.cluster_identity'),mock.patch.object(run,'hydrate_native',hydrate),mock.patch.object(run,'download',download),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO())]
             with contextlib.ExitStack()as stack:
                 for patch in patches:stack.enter_context(patch)
+                planning = stack.enter_context(mock.patch.object(run, "read_runtime_selection", return_value=proof))
+                if inventory == "malformed":
+                    planning.side_effect = ValueError("runtime_inventory_entity_changed")
+                stack.enter_context(mock.patch.object(run, "RemoteRestic"))
+                availability = run.availability
                 # Read only the two real checked-in release files; config reads
                 # are supplied by the protected-selection mock above.
                 original=Path.read_text
                 def release_read(path,*a,**kw):
-                    if path.name=='k3s-0.9.0.json':return json.dumps({'installedTools':{'ops':'qualified','bun':'qualified'},'images':[]})
+                    if path.name=='k3s-0.9.0.json':return json.dumps(selected_release if inventory else base_release)
                     return original(path,*a,**kw)
                 with mock.patch.object(Path,'read_text',release_read):result=run.execute(r)
                 hydrate.assert_not_called();download.assert_not_called()
+                if inventory == "malformed":
+                    availability.assert_not_called()
+                    self.assertTrue(all(args[0] != "docker" for args in calls))
+                elif inventory:
+                    availability.assert_called_once_with([system] if inventory == "unused" else rows)
                 self.assertTrue(all('stop'not in x and 'disable'not in x and ('install.py'not in str(x)or x[-1]=='check')for x in calls))
                 if offline or no_space:self.assertTrue(all(x[0]!='docker'for x in calls))
                 return result
@@ -100,5 +119,11 @@ class MigrationBoundary(unittest.TestCase):
     def test_foreign_running_docker_workload_blocks_migration(self):self.assertEqual(self.exercise(True),1)
     def test_unavailable_docker_is_not_started(self):self.assertEqual(self.exercise(offline=True),1)
     def test_insufficient_image_capacity_stops_before_docker_or_native_hydration(self):self.assertEqual(self.exercise(no_space=True),1)
+    def test_unused_optional_runtime_is_not_checked_for_download(self):
+        self.assertEqual(self.exercise(inventory="unused"),0)
+    def test_used_optional_runtime_remains_in_image_preflight(self):
+        self.assertEqual(self.exercise(inventory="used"),0)
+    def test_incomplete_runtime_inventory_stops_before_image_or_docker_calls(self):
+        self.assertEqual(self.exercise(inventory="malformed"),1)
 
 if __name__=='__main__':unittest.main()

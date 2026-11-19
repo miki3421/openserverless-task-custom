@@ -30,6 +30,7 @@ TASK=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(TASK/'backup/engine/scripts'))
 from store_common import require,read,save,digest,regular,hardware_uuid,acquire_operation
 from store_driver import verified_store,selected,hydrate_native
+from store_remote import RemoteRestic
 from assets import download
 from images import availability
 from acquisition import preflight as acquisition_preflight,check_remaining
@@ -37,6 +38,7 @@ sys.path.insert(0,str(TASK/'restore'))
 import source_runtime
 
 from platform_contract import release_platform
+from runtime_inventory import prepared_selection, read_runtime_selection, selected_release, stream_process
 
 def durable_save(path, value):
     """Persist new migration evidence and its newly created run-directory entry.
@@ -117,8 +119,9 @@ def execute(r):
     try:
         previous_stop_requires_review(root,uid)
         progress('preflight','Verify the exact completed backup, physical host, source and immutable software inputs.')
-        c=verified_store(home/'backup-store.json');destination,bundle=selected(c,require_metadata=False)
+        c=verified_store(home/'backup-store.json')
         store_lock=acquire_operation(c)
+        destination,bundle=selected(c,require_metadata=False)
         require(bundle['source']['hostUuid']==hardware_uuid(),'migration_host_changed')
         require(bundle['docker']['archiveCount']>0 and bundle['docker']['sourceRecovered'] is True,'verified_docker_checkpoint_required')
         source=read(c['sourceConfig'],uid);s=source['kind']['source']
@@ -139,6 +142,23 @@ def execute(r):
         target_release=json.loads((TASK/'migrate/releases/k3s-0.9.0.json').read_text())
         for key,path in [('ops',r['ops']),('bun',r['bun'])]:
             require(digest(regular(path,uid,False))==target_release['installedTools'][key],'qualified_'+key+'_required')
+        selection_path = None
+        previous_selection = (prepared_selection(prepared, uid)
+                              if resuming and target_release.get("optionalRuntimeImages") else None)
+        select_runtimes = target_release.get("optionalRuntimeImages") and (not resuming or previous_selection is not None)
+        snapshot = bundle["native"]["snapshot"] if select_runtimes else None
+        if select_runtimes:
+            progress("verify-runtime-inventory", "Read the runtime dependencies of the exact encrypted backup.")
+            remote = RemoteRestic(destination, source, bundle["native"]["prefix"], work)
+            def restic_stream(args, consume):
+                stream_process(remote.common + args, work / "runtime-stream.stderr.private", consume, env=remote.env)
+            selection = read_runtime_selection(snapshot, target_release["optionalRuntimeImages"], work,
+                                               remote.call, restic_stream, source_uid=s["cluster_uid"])
+            require(not resuming or selection == previous_selection, "prepared_runtime_selection_changed")
+            target_release = selected_release(target_release, selection, snapshot)
+            selection_path = work / "runtime-selection.json"
+            durable_save(selection_path, selection)
+            state["excludedUnusedRuntimeImages"] = selection["excludedImages"]
         images=availability(target_release['images']);durable_save(work/'image-availability.json',images)
         require(not images['missing'],'target_images_not_published')
         acquisition=acquisition_preflight(target_release['images'],work,command,target_ready=resuming,platform=release_platform(target_release))
@@ -171,7 +191,10 @@ def execute(r):
         if r['check']:
             state.update(status='check_passed',backupRunId=bundle['runId'],clusterMutation=False);durable_save(work/'journal.json',state);print(json.dumps(state));return 0
         progress('verify-selected-archive','Retrieve and verify the encrypted native set from the same completed backup generation.')
-        archive=hydrate_native(c);durable_save(work/'selected-archive.private.json',archive);state['backupRunId']=archive['runId']
+        archive=hydrate_native(c)
+        require(not snapshot or (archive["snapshot"] == snapshot and archive["runId"] == bundle["runId"]),
+                "runtime_selection_snapshot_changed")
+        durable_save(work/'selected-archive.private.json',archive);state['backupRunId']=archive['runId']
         if not resuming:
             progress('fetch-pinned-installer','Download the pinned K3s binary, installer and certificate controller before stopping source containers.')
             for name,key in [('k3s','binary'),('install.sh','installer'),('cert-manager.yaml','certManager')]:
@@ -215,6 +238,8 @@ def execute(r):
         if runtime is not None:source_runtime.verify(runtime)
         progress('prepare-restore','Assemble verified 0.9.0 inputs and bind the new target to the exact selected native snapshot.')
         prep={**r,'repository':archive['repository'],'key':archive['passwordFile'],'snapshot':archive['snapshot'],'check':False}
+        if selection_path:
+            prep["runtimeSelection"] = str(selection_path)
         prep_path=work/'prepare-request.json';durable_save(prep_path,prep)
         command('prepare-restore',['python3','-B',TASK/'migrate/prepare.py',prep_path],timeout=14400)
         pointer=read(root/'prepared.json',uid);prepared=read(pointer['profile'],uid);target_tmp=Path(prepared['target']['opsHome'])/'tmp'

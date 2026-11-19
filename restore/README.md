@@ -84,7 +84,11 @@ system runtime used by the preloader, every saved nondefault action kind and
 blackbox image. Missing coverage stops the restore before native recovery. An
 optional checksum-pinned `images/catalog-runtimes.tar` supplies catalog images
 that were never started on the source and are absent from its image capture.
-No runtime kind or application image is silently replaced or removed.
+Fresh same-host restore can carry a checksum-pinned optional-runtime selection.
+It recomputes that selection from the exact archive before importing images and
+uses the same catalog for closure checks and installation. The source catalog,
+its saved image aliases and the existing isolated/prepared routes retain
+their prior behavior. See [selection policy](../migrate/README.md#optional-legacy-runtimes-for-fresh-same-host-migration).
 
 Native etcd readiness requires the final server executable at PID1 before the
 authenticated health check runs. A healthy temporary Bitnami setup listener is

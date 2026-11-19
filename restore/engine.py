@@ -21,7 +21,7 @@ from pathlib import Path
 from lib import require,private_json,regular,digest,validate_profile,selected_snapshot,interface_name,interface_address
 from archive import unpack
 from service_dns import enable_dns,verify_dns
-from offline_runtimes import verify_runtime_cache
+from offline_runtimes import prepare_runtime_selection, verify_runtime_cache
 import same_host
 from platform_contract import profile_platform,architecture
 from storage import inspect_storage, require_headroom, add_image_allowance
@@ -102,7 +102,11 @@ def main(request_path):
     selected_snapshot(json.loads(result.stdout),a['snapshot'],p['maxRestoreBytes'])
     snapshot=next(row for row in json.loads(result.stdout) if row['id']==a['snapshot'])
     storage=inspect_storage(p,assets_manifest,snapshot,read)
-    if request['check']:print(json.dumps({'status':'check_passed','route':p['route'],'targetVersion':'0.9.0','clusterMutation':False,'applicationRestoreVerified':False,'storage':storage}));return
+    if request['check']:
+        report={'status':'check_passed','route':p['route'],'targetVersion':'0.9.0','clusterMutation':False,'applicationRestoreVerified':False,'storage':storage}
+        if "runtime-selection.json" in assets_manifest["files"]:
+            report["runtimeSelectionArchiveRecheck"] = "before-image-import"
+        print(json.dumps(report));return
     BASE.mkdir(mode=0o700,exist_ok=True);require(not BASE.is_symlink()and BASE.stat().st_uid==0 and not BASE.stat().st_mode&0o077,'protected_restore_root_required')
     (BASE/'.lock').mkdir(mode=0o700);run_id=uuid.uuid4().hex;root=BASE/'runs'/run_id;root.mkdir(mode=0o700,parents=True);logs=root/'logs';logs.mkdir(mode=0o700)
     state={'schemaVersion':1,'runId':run_id,'status':'running','phase':'verify-archive','completed':[],'finalIamVerified':False,'applicationRestoreVerified':False};save(BASE/'current.json',{'runId':run_id,'hostUuid':t['hostUuid']});save(root/'journal.json',state)
@@ -123,6 +127,8 @@ def main(request_path):
             src=regular(assets/name,caller);require(src.stat().st_size==row['bytes']and digest(src)==row['sha256'],'offline_asset_changed')
             dest=inputs/name;dest.parent.mkdir(mode=0o700,parents=True,exist_ok=True);shutil.copyfile(src,dest);dest.chmod(0o700 if name.startswith('tools/')else 0o600)
         save(inputs/'manifest.json',manifest)
+        release = json.loads((TASK / 'migrate/releases/k3s-0.9.0.json').read_text()) if 'runtime-selection.json' in manifest['files'] else {}
+        runtime_catalog_hash = prepare_runtime_selection(root, p, manifest, release.get("optionalRuntimeImages"))
         progress('verify-image-storage')
         images=[root/'source-cache.tar',inputs/'images/baseline.tar',inputs/'images/operator-candidate.tar']
         if 'images/catalog-runtimes.tar'in manifest['files']:images.append(inputs/'images/catalog-runtimes.tar')
@@ -140,7 +146,7 @@ def main(request_path):
         if 'images/catalog-runtimes.tar'in manifest['files']:
             run('import-offline-catalog-runtime-images',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','import','--platform',selected_platform,str(inputs/'images/catalog-runtimes.tar')],timeout=1800)
         require_headroom(storage)
-        progress('verify-offline-runtimes');verify_runtime_cache(root,p,run);state['completed'].append('verify-offline-runtimes')
+        progress('verify-offline-runtimes');verify_runtime_cache(root,p,run,selected_catalog=runtime_catalog_hash is not None);state['completed'].append('verify-offline-runtimes')
         target_root=root/'target-090';target_root.mkdir(mode=0o700)
         config=Path('/etc/ops-restore-k3s.private.json')
         if same_host_route:save(target_root/'k3s-090.private.yaml',target_config)
@@ -154,6 +160,8 @@ def main(request_path):
             marker.update(restoreRoute=p['route'],sameHostIdentityVerified=True);save(root/'host-binding.json',marker)
         configuration={'operation':'restore','root':str(root),'dataRoot':'/var/lib/openserverless/volumes/'+run_id,'taskRoot':str(TASK),'profile':p,'source':{'hostname':t['hostname'],'address':t['address']},'runId':run_id,'bun':request['bun'],'nativeNamespace':marker['nativeNamespace'],'targetClusterUid':t['clusterUid'],'sourcePodCidr':network['podCidr']if same_host_route else'10.54.0.0/16','targetPodCidr':network['podCidr']if same_host_route else'10.54.0.0/16','targetServiceCidr':network['serviceCidr']if same_host_route else'10.55.0.0/16','targetClusterDns':network['clusterDns']if same_host_route else'10.55.0.10'}
         if same_host_route:configuration.update(preserveTargetAddons=True,targetOpsHome=t['opsHome'])
+        if runtime_catalog_hash:
+            configuration["restoreRuntimeCatalogSha256"] = runtime_catalog_hash
         save(root/'configuration.json',configuration)
         progress('prepare-service-dns')
         dns=verify_dns(t,k,run,network['podCidr'],network['clusterDns'])if same_host_route else enable_dns(target_root/'k3s-090.private.yaml',t,k,run)

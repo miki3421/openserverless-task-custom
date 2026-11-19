@@ -34,6 +34,8 @@ from lib import require, private_json, regular, digest, selected_snapshot, valid
 from engine import save
 from assets import assemble, download
 from images import availability
+sys.path.insert(0, str(TASK / 'backup/engine/scripts'))
+from runtime_inventory import prepared_selection, read_runtime_selection, selected_release, stream_process
 
 LIMIT = 32 * 1024**3
 
@@ -177,7 +179,7 @@ def prepare(request):
     os.umask(0o077)
     uid = os.getuid(); account = pwd.getpwuid(uid); home = Path(account.pw_dir)
     require(uid > 0 and str(home) == '/home/' + account.pw_name, 'local_nonroot_ops_owner_required')
-    require(set(request) == {'to', 'check', 'json', 'repository', 'key', 'snapshot', 'ops', 'bun', 'bin', 'opsHome'} and
+    require(set(request) - {'runtimeSelection'} == {'to', 'check', 'json', 'repository', 'key', 'snapshot', 'ops', 'bun', 'bin', 'opsHome'} and
             request['to'] == 'k3s' and type(request['check']) is bool and type(request['json']) is bool,
             'invalid_migrate_prepare_request')
     require(sys.version_info[:2] == (3, 12), 'qualified_python312_required')
@@ -243,10 +245,25 @@ def prepare(request):
         progress('read-encrypted-backup-metadata')
         source = read_archive(archive, run, observed['target'])
         save(work / 'source-identity.private.json', source)
+        requested_selection = None
+        if request.get("runtimeSelection"):
+            proof_path = Path(request["runtimeSelection"])
+            require(proof_path.parent.parent == root and proof_path.name == "runtime-selection.json"
+                    and re.fullmatch(r"run-[a-f0-9]{32}", proof_path.parent.name),
+                    "protected_runtime_selection_required")
+            requested_selection = private_json(proof_path, uid)
+            selected_release(release, requested_selection, archive["snapshot"])
+
         if (root / 'prepared.json').exists():
             progress('verify-existing-preparation')
-            path = existing_preparation(root / 'prepared.json', uid, source, observed['target'], archive, commit, refresh=not request['check'])
+            path = existing_preparation(root / 'prepared.json', uid, source, observed['target'], archive, commit)
+            existing = private_json(path, uid)
+            if requested_selection is not None:
+                require(prepared_selection(existing, uid) == requested_selection,
+                        "prepared_runtime_selection_changed")
             if not request['check']:
+                if existing['engineCommit'] != commit:
+                    refresh_wrapper_pin(existing, Path(path), commit)
                 run('rebind-target', ['sudo', '-n', 'python3', '-B', str(TASK / 'migrate/target.py'), 'bind', path])
             state.update(status='check_passed' if request['check'] else 'prepared', restoreConfigured=True)
             save(work / 'journal.json', state); print(json.dumps(state)); return 0
@@ -257,6 +274,21 @@ def prepare(request):
         require(not profile_path.exists(), 'existing_restore_profile_requires_review')
         configuration = read_cli_configuration(selected_home / 'config.json', uid) if (selected_home / 'config.json').exists() else {}
         configuration['images'] = copy.deepcopy(release['target']['images'])
+        selection = requested_selection
+        if optional := release.get("optionalRuntimeImages"):
+            if selection is None:
+                common = [archive["restic"], "--repo", archive["repository"], "--password-file",
+                          archive["passwordFile"], "--no-cache"]
+                def restic_call(label, args):
+                    # Existing metadata read already reserved the archive-snapshots label.
+                    return run("selection-" + label, common + args)
+                def restic_stream(args, consume):
+                    stream_process(common + args, work / "runtime-stream.stderr.private", consume)
+                selection = read_runtime_selection(archive["snapshot"], optional, work,
+                                                   restic_call, restic_stream, source_uid=source["clusterUid"])
+            release = selected_release(release, selection, archive["snapshot"])
+            state["excludedUnusedRuntimeImages"] = selection["excludedImages"]
+
         progress('verify-published-images')
         result = availability(release['images']); save(work / 'image-availability.json', result)
         if result['missing']:
@@ -268,7 +300,12 @@ def prepare(request):
         progress('assemble-online-inputs')
         assets = work / 'assets'
         require(shutil.disk_usage(work).free > LIMIT + 20 * 1024**3, 'insufficient_preparation_and_restore_storage')
-        assemble(release, assets, request['ops'], request['bun'], request['bin'], run, progress)
+        manifest = assemble(release, assets, request['ops'], request['bun'], request['bin'], run, progress)
+        if selection:
+            proof = assets / "runtime-selection.json"
+            save(proof, selection)
+            manifest["files"][proof.name] = {"bytes": proof.stat().st_size, "sha256": digest(proof)}
+            save(assets / "manifest.json", manifest)
         # Keep migration caches separate from the stopped source kind cache.
         protected_directory(target_home, uid); protected_directory(target_home / 'tmp', uid)
         # Preserve caller settings while keeping subsequent target task writes

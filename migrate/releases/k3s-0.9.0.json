@@ -57,6 +57,11 @@
       "zookeeper": "ghcr.io/nuvolaris/zookeeper:3.4.14"
     }
   },
+  "optionalRuntimeImages": [
+    "docker.io/openwhisk/action-dotnet-v2.2:nightly",
+    "docker.io/openwhisk/action-ruby-v2.5:nightly",
+    "docker.io/openwhisk/action-rust-v1.34:nightly"
+  ],
   "images": [
     {
       "reference": "docker.io/apache/couchdb:2.3",
