@@ -333,4 +333,8 @@ destination catalog selection. Operational phases remain unstarted.
 The candidate passed 259 migration and restore tests in normal and optimized
 Python. These are the same cases in each mode. The separate adapter-scope suite
 reported three existing isolation-fixture failures. The same three case IDs
-failed against the preceding driver source. Independent source review is pending.
+failed against the preceding driver source. Independent review accepted code
+e31bc111a6627 for the offline migration scope. Twelve independent selection
+tests passed in both Python modes, plus four predecessor closure regressions.
+The review also confirmed that required prewarm and configured blackbox aliases
+are checked before native restore. Operational ARM64 qualification remains open.
