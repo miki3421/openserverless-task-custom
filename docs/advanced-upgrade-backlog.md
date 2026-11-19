@@ -28,3 +28,18 @@ upgrade procedure must coordinate scheduler/producer admission and verify invoke
 recovery rather than using broker Pod readiness as proof of application readiness.
 Missed-work recovery and duplicate prevention require their own design and tests;
 do not add blind retries to conceal this availability window.
+
+## Tenant lifecycle
+
+- **Enable services on an existing tenant.** Extend the ADV Operator's tenant
+  reconciliation to provision newly enabled services on the existing
+  `WhiskUser`, starting with MongoDB/FerretDB and Milvus. Preserve the tenant
+  identity, application URL, deployed actions, credentials and data for existing
+  services. Publish new tenant-scoped connection settings after readiness, and
+  qualify repeated requests and recovery after partial provisioning. Expose the
+  operation through a supported OPS command or API so Management can use it.
+- **Delete a tenant and verify data removal.** Provide a supported operation
+  that binds the tenant identity and selected Engine, reports cleanup per
+  service and verifies that tenant data is gone. In the current profile,
+  `ops admin deleteuser` revokes the Redis user and preserves its keys. Qualify
+  data removal and safe retries while maintaining isolation from other tenants.
