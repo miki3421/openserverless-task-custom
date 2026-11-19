@@ -380,7 +380,7 @@ eligible for omission. Before image preflight, `ops migrate --to=k3s` and its
 check read the exact selected encrypted archive. The logical export binds
 every namespace entity to its document ID, revision, type and runtime.
 Saved kind aliases resolve against the source catalog. Saved actions, their
-runtime families, blackbox image repositories, system kinds, prewarm entries,
+runtime families, saved and configured blackboxes, system kinds, prewarm entries,
 and nonoptional platform images remain protected.
 
 The permitted omissions narrow target acquisition and the installed runtime

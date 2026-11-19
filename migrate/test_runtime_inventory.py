@@ -26,7 +26,7 @@ import sys
 TASK = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(TASK / "migrate"), str(TASK / "restore"), str(TASK / "backup/engine/scripts")]
 from runtime_inventory import inventory_files, read_runtime_selection, selected_release, prepared_selection
-from offline_runtimes import catalog_hash, runtime_selection, prepare_runtime_selection
+from offline_runtimes import catalog_hash, missing_runtime_images, prepare_runtime_selection, required_runtime_images, runtime_selection
 
 RELEASE = json.loads((TASK / "migrate/releases/k3s-0.9.0.json").read_text())
 OPTIONAL = RELEASE["optionalRuntimeImages"]
@@ -168,6 +168,26 @@ class RuntimeInventory(unittest.TestCase):
         proof, selected = runtime_selection(source, [], OPTIONAL, SNAPSHOT)
         self.assertEqual(selected["runtimes"]["ruby"], [legacy, modern])
         self.assertNotIn(OPTIONAL[1], proof["excludedImages"])
+
+    def test_selected_closure_requires_source_prewarm_and_configured_blackbox_alias(self):
+        source = catalog()
+        prewarm = source["runtimes"]["rust"][0]
+        prewarm["default"] = False
+        prewarm["image"]["tag"] = "source-native"
+        prewarm["stemCells"] = [{"initialCount": 1}]
+        source["runtimes"]["rust"].append(entry("rust:1.35", "docker.io/synthetic/rust:1.35"))
+        configured = {"prefix": "index.docker.io/openwhisk", "name": "action-dotnet-v2.2", "tag": "pinned"}
+        source["blackboxes"] = [configured]
+        proof, selected = runtime_selection(source, [], OPTIONAL, SNAPSHOT)
+        self.assertNotIn(OPTIONAL[0], proof["excludedImages"])
+        self.assertNotIn(OPTIONAL[2], proof["excludedImages"])
+        prewarm_image = "docker.io/openwhisk/action-rust-v1.34:source-native"
+        blackbox_image = "docker.io/openwhisk/action-dotnet-v2.2:pinned"
+        required = required_runtime_images(selected, [], selected_catalog=True)
+        cached = [ref for ref in required if ref not in {prewarm_image, blackbox_image}] + OPTIONAL
+        self.assertEqual(missing_runtime_images(required, cached), [blackbox_image, prewarm_image])
+        self.assertNotIn(prewarm_image, required_runtime_images(source, []))
+        self.assertNotIn(blackbox_image, required_runtime_images(source, []))
 
     def test_unresolved_action_runtime_and_malformed_exec_fail_closed(self):
         for document in (entity("unavailable:default"), entity("unavailable:1"), {"exec": None}, {"exec": {}}):

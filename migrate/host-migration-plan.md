@@ -330,7 +330,7 @@ operator, target OPS/Bun, ARM64 compatibility and complete native rehearsal
 remain qualification gates. The branch changes only the migrator and the
 destination catalog selection. Operational phases remain unstarted.
 
-The candidate passed 258 migration and restore tests in normal and optimized
+The candidate passed 259 migration and restore tests in normal and optimized
 Python. These are the same cases in each mode. The separate adapter-scope suite
 reported three existing isolation-fixture failures. The same three case IDs
 failed against the preceding driver source. Independent source review is pending.

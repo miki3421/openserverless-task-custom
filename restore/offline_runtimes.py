@@ -41,12 +41,29 @@ def repository_of(reference):
     return (prefix + "/" + leaf.split("@", 1)[0].split(":", 1)[0]).lower()
 
 
+def configured_blackboxes(catalog):
+    entries = catalog.get("blackboxes", [])
+    require(type(entries) is list, "unsupported_configured_blackbox_catalog")
+    result = set()
+    for entry in entries:
+        if type(entry) is str:
+            result.add(normalized_image(entry))
+        else:
+            require(type(entry) is dict, "unsupported_configured_blackbox_entry")
+            image = entry.get("image", entry)
+            require(type(image) is dict and type(image.get("name")) is str
+                    and type(image.get("tag")) is str and type(image.get("prefix", "")) is str,
+                    "unsupported_configured_blackbox_entry")
+            result.add(image_for({"image": image}))
+    return result
+
+
 def runtime_dependencies(catalog, documents, *, strict=False):
     entries = [entry for family in catalog["runtimes"].values() for entry in family]
     by_kind = {entry["kind"]: entry for entry in entries}
     require(len(by_kind) == len(entries), "duplicate_runtime_kind")
     require(all(type(entry.get("default")) is bool for entry in entries), "invalid_runtime_default_flag")
-    used, blackboxes = set(), set()
+    used, blackboxes = set(), configured_blackboxes(catalog) if strict else set()
     for document in documents:
         require(type(document) is dict, "invalid_saved_runtime_document")
         executable = document.get("exec")
@@ -70,10 +87,11 @@ def runtime_dependencies(catalog, documents, *, strict=False):
     return by_kind, used, blackboxes
 
 
-def required_runtime_images(catalog, documents):
-    by_kind, used, blackboxes = runtime_dependencies(catalog, documents)
+def required_runtime_images(catalog, documents, *, selected_catalog=False):
+    by_kind, used, blackboxes = runtime_dependencies(catalog, documents, strict=selected_catalog)
     return sorted(blackboxes | {image_for(entry) for kind, entry in by_kind.items()
-                              if kind in used or entry["default"] or kind.endswith(":sys")})
+                              if kind in used or entry["default"] or kind.endswith(":sys")
+                              or (selected_catalog and entry.get("stemCells"))})
 
 
 def runtime_selection(catalog, documents, optional, snapshot):
@@ -245,7 +263,9 @@ def verify_runtime_cache(root,profile,run,*,selected_catalog=False):
             with path.open()as stream:
                 for line in stream:
                     if line.strip():yield json.loads(line)
-    required=required_runtime_images(catalog,documents());cached=run('offline-runtime-cache',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','ls','-q']).decode().splitlines()
+    saved = logical_documents(payload) if selected_catalog else documents()
+    required = required_runtime_images(catalog, saved, selected_catalog=selected_catalog)
+    cached=run('offline-runtime-cache',['/usr/local/bin/k3s','ctr','-n','k8s.io','images','ls','-q']).decode().splitlines()
     missing=missing_runtime_images(required,cached)
     result={'requiredImages':required,'missingImages':missing,'allRequiredRuntimeImagesCached':not missing,'checkedBeforeNativeRestore':True}
     path=root/'offline-runtime-verification.json';path.write_text(json.dumps(result));path.chmod(0o600)
