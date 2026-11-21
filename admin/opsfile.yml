@@ -29,6 +29,14 @@ env:
 
 tasks:
 
+  enable-services:
+    desc: Enable selected services on an existing ADV tenant
+    silent: true
+    env:
+      OPS_ENABLE_TENANT: '{{._username_}}'
+    cmds:
+      - bun "$OPS_ROOT/admin/enable-services.ts" --mongodb={{.__mongodb}} --milvus={{.__milvus}}
+
   listuser:
     silent: true
     cmds:

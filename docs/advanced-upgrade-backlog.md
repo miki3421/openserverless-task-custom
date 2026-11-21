@@ -38,6 +38,14 @@ do not add blind retries to conceal this availability window.
   services. Publish new tenant-scoped connection settings after readiness, and
   qualify repeated requests and recovery after partial provisioning. Expose the
   operation through a supported OPS command or API so Management can use it.
+  The private ADV step `20261121-tenant-services-r1` delivers this feature through
+  `ops admin enable-services <username> [--mongodb] [--milvus]`. The command
+  binds the request to the current tenant UID and waits for the Operator receipt.
+  The Operator verifies the requested service, merges its connection settings
+  with the current metadata revision and then marks the service enabled. The
+  Operator image is published and pinned in this task catalog. Unit tests and
+  isolated native FerretDB and Milvus checks passed. Existing-tenant rollout,
+  application data readback and Management integration remain for lab acceptance.
 - **Delete a tenant and verify data removal.** Provide a supported operation
   that binds the tenant identity and selected Engine, reports cleanup per
   service and verifies that tenant data is gone. In the current profile,

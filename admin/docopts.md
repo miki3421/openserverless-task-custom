@@ -28,6 +28,7 @@ You can create namespaces and choose which services to enable.
 ```text
 Usage:
   admin adduser <username> <email> <password> [--all] [--redis] [--mongodb] [--seaweedfs] [--postgres] [--milvus] [--storagequota=<quota>|auto]
+  admin enable-services <username> [--mongodb] [--milvus]
   admin deleteuser <username> [--confirm-namespace-delete]
   admin listuser [<username>]
   admin sso unbind <username>
@@ -38,6 +39,7 @@ Usage:
 ## Commands
 ```
   admin adduser       create a new user in OpenServerless with the username, email and password provided
+  admin enable-services  enable MongoDB and/or Milvus for an existing ADV tenant and wait for the Operator receipt
   admin deleteuser    delete a user from the OpenServerless installation via the username provided
   admin listuser      list all the secrets of an user (default list all the users)
   admin sso unbind    remove SSO binding while preserving the OpenServerless namespace

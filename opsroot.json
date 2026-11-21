@@ -13,7 +13,7 @@
     },
     "images": {
       "traefik": "docker.io/library/traefik:v3.7.18@sha256:9c437ac4f09ce6f4980a8544902d3475fdf70a1a7c578729581d2535dfa7d635",
-      "operator": "docker.io/miki3421/ops-advanced-operator:20261111-engine-freeze-r3@sha256:7dc4659d75787e42613ec5253b91990893a093727f4c4756684f8fa237c3a10d",
+      "operator": "docker.io/miki3421/ops-advanced-operator:20261121-tenant-services-r1@sha256:8da575c39e6630895e9b5aa73d929f39852b41a22693b3ebf7e7c9e19b42bf85",
       "controller": "docker.io/miki3421/ops-advanced-controller:20261106-kafka-azure-r3@sha256:e926b6578abdf8ff0c3be1a1477e89ae098d4c3a84764d034562783476d90c57",
       "invoker": "docker.io/miki3421/ops-advanced-invoker:20261106-kafka-azure-r3@sha256:0190540ea64c7187870e6298148061c245a486ea6bd64d10e81fd2311d1577d4",
       "streamer": "docker.io/miki3421/ops-advanced-streamer:20261106-go1273-r1@sha256:5aa7a68a4be7ea75f20de996656623a46d639d2d933856ae393d979a1f374911",
